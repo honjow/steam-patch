@@ -2,9 +2,9 @@ name: Rust Build
 
 on:
   push:
-    branches: [ main ]
+    # branches: [ main ]
     tags:
-      - '*'
+      - 'v*'
   pull_request:
     branches: [ main ]
 
