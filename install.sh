@@ -8,7 +8,7 @@ USER_DIR="$(getent passwd $SUDO_USER | cut -d: -f6)"
 WORKING_FOLDER="${USER_DIR}/steam-patch"
 
 # Create folder structure
-mkdir "${WORKING_FOLDER}"
+mkdir -p "${WORKING_FOLDER}"
 # Enable CEF debugging
 touch "${USER_DIR}/.steam/steam/.cef-enable-remote-debugging"
 
@@ -17,15 +17,15 @@ RELEASE=$(curl -s 'https://api.github.com/repos/honjow/steam-patch/releases' | j
 VERSION=$(jq -r '.tag_name' <<< ${RELEASE} )
 DOWNLOAD_URL=$(jq -r '.assets[].browser_download_url | select(endswith("steam-patch"))' <<< ${RELEASE})
 
-printf "Installing version %s...\n" "${VERSION}"
-curl -L $DOWNLOAD_URL --output ${WORKING_FOLDER}/steam-patch
-chmod +x ${WORKING_FOLDER}/steam-patch
-
 systemctl --user stop steam-patch 2> /dev/null
 systemctl --user disable steam-patch 2> /dev/null
 
 systemctl stop steam-patch 2> /dev/null
 systemctl disable steam-patch 2> /dev/null
+
+printf "Installing version %s...\n" "${VERSION}"
+curl -L $DOWNLOAD_URL --output ${WORKING_FOLDER}/steam-patch
+chmod +x ${WORKING_FOLDER}/steam-patch
 
 # Add new service file
 cat > "${WORKING_FOLDER}/steam-patch.service" <<- EOM
