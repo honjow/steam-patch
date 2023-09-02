@@ -43,6 +43,26 @@ pub fn create_device() -> Option<Box<dyn Device>> {
                     Some(Box::new(DeviceGeneric::new(30)))
                 }
 
+                // Ayaneo Air 1S
+                "AMD Ryzen 7 7840U w/ Radeon 780M Graphics AYANEO AIR 1S" => {
+                    Some(Box::new(DeviceGeneric::new(30)))
+                }
+
+                // Ayaneo Air
+                "AMD Ryzen 5 5560U with Radeon Graphics AYANEO AYANEO AIR" => {
+                    Some(Box::new(DeviceGeneric::new(18)))
+                }
+
+                // Ayaneo Air Pro 5560U
+                "AMD Ryzen 5 5560U with Radeon Graphics AYANEO AYANEO AIR Pro" => {
+                    Some(Box::new(DeviceGeneric::new(18)))
+                }
+
+                // Ayaneo Air Pro 5825U
+                "AMD Ryzen 7 5825U with Radeon Graphics AYANEO AYANEO AIR Pro" => {
+                    Some(Box::new(DeviceGeneric::new(25)))
+                }
+
                 // GPD WM2
                 "AMD Ryzen 7 6800U with Radeon Graphics GPD G1619-04" => {
                     Some(Box::new(DeviceGeneric::new(28)))
@@ -51,6 +71,18 @@ pub fn create_device() -> Option<Box<dyn Device>> {
                 // AOKZOE A1
                 "AMD Ryzen 7 6800U with Radeon Graphics AOKZOE AOKZOE A1 AR07" => {
                     Some(Box::new(DeviceGeneric::new(28)))
+                }
+
+                s if s.contains("5560U") => {
+                    Some(Box::new(DeviceGeneric::new(18)))
+                }
+
+                s if s.contains("6800U") => {
+                    Some(Box::new(DeviceGeneric::new(30)))
+                }
+
+                s if s.contains("7840U") => {
+                    Some(Box::new(DeviceGeneric::new(30)))
                 }
 
                 // Any other device

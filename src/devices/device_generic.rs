@@ -27,7 +27,8 @@ impl Device for DeviceGeneric {
     fn set_tdp(&self, tdp: i8) {
         // Update TDP
         let target_tdp = tdp as i32 * 1000;
-        let boost_tdp = target_tdp + 2000;
+        // let boost_tdp = target_tdp + 2000;
+        let boost_tdp = target_tdp;
 
         let command = [
             "ryzenadj",
