@@ -7,6 +7,7 @@ USER_DIR="$(getent passwd $SUDO_USER | cut -d: -f6)"
 WORKING_FOLDER="${USER_DIR}/steam-patch"
 
 github_prefix=$1
+echo "github_prefix: ${github_prefix}"
 
 # Create folder structure
 mkdir -p "${WORKING_FOLDER}"
@@ -14,7 +15,7 @@ mkdir -p "${WORKING_FOLDER}"
 touch "${USER_DIR}/.steam/steam/.cef-enable-remote-debugging"
 
 # Download latest release and install it
-RELEASE=$(curl -s '${github_prefix}https://api.github.com/repos/honjow/steam-patch/releases' | jq -r "first(.[] | select(.prerelease == "false"))")
+RELEASE=$(curl -s "${github_prefix}https://api.github.com/repos/honjow/steam-patch/releases" | jq -r "first(.[] | select(.prerelease == "false"))")
 VERSION=$(jq -r '.tag_name' <<< ${RELEASE} )
 DOWNLOAD_URL=$(jq -r '.assets[].browser_download_url | select(endswith("steam-patch"))' <<< ${RELEASE})
 
