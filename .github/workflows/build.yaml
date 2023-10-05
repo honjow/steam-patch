@@ -26,6 +26,7 @@ jobs:
       - name: 🛠️ Set Script Permissions
         run: |
           chmod +x ./install.sh
+          chmod +x ./install_cn.sh
           chmod +x ./uninstall.sh
 
       - name: 📦 Warm up cache
@@ -77,4 +78,5 @@ jobs:
           files: |
             target/x86_64-unknown-linux-gnu/release/steam-patch
             install.sh
+            install_cn.sh
             uninstall.sh
