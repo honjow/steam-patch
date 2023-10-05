@@ -1,13 +1,12 @@
-#!/bin/sh
-
-github_prefix=$1
-
+#!/bin/bash
 [ "$UID" -eq 0 ] || exec sudo "$0" "$@"
 
 echo "Installing Steam Patch release..."
 
 USER_DIR="$(getent passwd $SUDO_USER | cut -d: -f6)"
 WORKING_FOLDER="${USER_DIR}/steam-patch"
+
+github_prefix=$1
 
 # Create folder structure
 mkdir -p "${WORKING_FOLDER}"
