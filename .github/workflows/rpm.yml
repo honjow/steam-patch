@@ -65,8 +65,15 @@ jobs:
       - name: 🛠️ Install RPM Build Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y rpm
+          sudo apt-get install -y rpm build-essential
 
+      - name: 🛠️ Install Rust and Cargo
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+          
       - name: 🏗️ Set up RPM build environment
         run: |
           mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
