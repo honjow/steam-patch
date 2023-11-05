@@ -86,7 +86,7 @@ impl Device for DeviceAlly {
             val if (12..=25).contains(&val) => 0, // performance
             _ => 1,                               // turbo
         };
-        self.set_thermalpolicy(thermal_policy);
+        // self.set_thermalpolicy(thermal_policy);
         self.device.set_tdp(tdp);
     }
     fn set_gpu(&self, gpu: i16) {
