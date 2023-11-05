@@ -84,6 +84,3 @@ jobs:
             target/x86_64-unknown-linux-gnu/release/steam-patch
             install.sh
             uninstall.sh
-
-      - name: RPM Build
-        uses: naveenrajm7/rpmbuild@v1.0.0
