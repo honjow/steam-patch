@@ -7,6 +7,15 @@ on:
       - '*'
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      logLevel:
+        description: 'Log level'
+        required: true
+        default: 'warning'
+      tags:
+        description: 'Test tags'
+        required: false
 
 env:
   CARGO_TERM_COLOR: always
@@ -78,5 +87,3 @@ jobs:
 
       - name: RPM Build
         uses: naveenrajm7/rpmbuild@v1.0.0
-        with:
-          spec_file: steam-patch.spec
