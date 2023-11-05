@@ -12,50 +12,7 @@ jobs:
 
     steps:
       - name: 📚 Checkout Code
-        uses: actions/checkout@v2
-
-      - name: 🛠️ Set Script Permissions
-        run: |
-          chmod +x ./install.sh
-          chmod +x ./uninstall.sh
-      - name: 📦 Warm up cache
-        uses: actions/cache@v3
-        continue-on-error: false
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-cargo-
-
-      - name: 🦀 Setup Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          target: x86_64-unknown-linux-gnu
-          override: true
-
-      - name: 🏗️ Build
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --release --target x86_64-unknown-linux-gnu
-      
-      - name: ✂️ Strip Debug Symbols
-        run: strip -s target/x86_64-unknown-linux-gnu/release/steam-patch
-
-      - name: ➡️ Compress executable with UPX
-        run: |
-          sudo apt-get install upx
-          upx --best target/x86_64-unknown-linux-gnu/release/steam-patch
-      - name: 📦 Upload build
-        uses: actions/upload-artifact@v2
-        with:
-          name: steam-patch
-          path: target/x86_64-unknown-linux-gnu/release/steam-patch
+        uses: actions/checkout@v3
 
       - name: 📥 Download build artifacts
         uses: actions/download-artifact@v3
@@ -65,15 +22,14 @@ jobs:
       - name: 🛠️ Install RPM Build Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y rpm build-essential
+          sudo apt-get install -y rpm
 
       - name: 🛠️ Install Rust and Cargo
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-          
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+          source $HOME/.cargo/env
+          rustup default stable
+
       - name: 🏗️ Set up RPM build environment
         run: |
           mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
@@ -81,7 +37,9 @@ jobs:
           cp steam-patch.spec ~/rpmbuild/SPECS/
 
       - name: 📦 Build RPM package
-        run: rpmbuild -ba ~/rpmbuild/SPECS/steam-patch.spec
+        run: |
+          source $HOME/.cargo/env
+          rpmbuild -ba ~/rpmbuild/SPECS/steam-patch.spec
 
       - name: 📤 Upload RPM package
         uses: actions/upload-artifact@v3
