@@ -4,7 +4,10 @@ use crate::devices::Patch;
 use crate::patch::PatchFile;
 use crate::server::SettingsRequest;
 use crate::steam::SteamClient;
-use std::fs;
+use crate::utils;
+use std::fs::File;
+use std::{fs, env};
+use std::process::Command;
 use std::thread;
 use std::time::Duration;
 use std::io::{self, Write};
@@ -122,6 +125,54 @@ pub fn pick_device() -> Option<evdev::Device> {
     None
 }
 
+
+// pub fn recoverNkey() -> io::Result<()> {
+//     // Get the current executable's directory
+//     let mut binary_path = env::current_exe()?;
+//     binary_path.pop(); // Remove the binary name, leaving just the directory
+
+//     // Specify the name of the script to run
+//     let script_name = "sleep_workaround";
+
+//     // Combine the directory with the script name to get the relative path
+//     let script_path = binary_path.join(script_name);
+
+//     // Use std::process::Command to run the script
+//     let output = Command::new("bash")
+//         .arg(script_path)
+//         .output()?;
+
+//     // Check the output
+//     if output.status.success() {
+//         let stdout = String::from_utf8_lossy(&output.stdout);
+//         println!("Script executed successfully: {}", stdout);
+//     } else {
+//         let stderr = String::from_utf8_lossy(&output.stderr);
+//         eprintln!("Script execution failed: {}", stderr);
+//     }
+
+//     Ok(())
+// }
+pub fn recoverNkey() -> io::Result<()> {
+    // Check for "ROG Ally" in "/sys/devices/virtual/dmi/id/product_family"
+    
+    // Check if a specific USB device is not present
+    println!("ROG Ally detected and USB device 0b05:1abe not present, proceeding with pm_test");
+
+    // Write to "/sys/power/pm_test"
+    writeln!(File::create("/sys/power/pm_test")?, "platform")?;
+    println!("Set power management test mode to platform");
+
+    // Write "freeze" to "/sys/power/state"
+    writeln!(File::create("/sys/power/state")?, "freeze")?;
+    println!("Requested system to enter freeze state");
+
+    // Write "none" to "/sys/power/pm_test"
+    writeln!(File::create("/sys/power/pm_test")?, "none")?;
+    println!("Disabled power management test mode");
+    Ok(())
+}
+
 pub fn start_mapper(mut steam:SteamClient) -> Option<tokio::task::JoinHandle<()>> {
     let device = pick_device();
     
@@ -219,6 +270,12 @@ pub fn start_mapper(mut steam:SteamClient) -> Option<tokio::task::JoinHandle<()>
         })),
         None => {
             println!("No Ally-specific found, retrying in 2 seconds");
+            println!("N_key lost, attempting to trigger recovery script");
+            recoverNkey();
+            
+
+
+
             thread::sleep(Duration::from_secs(2));
             tokio::spawn(async move {
                 start_mapper(steam)
