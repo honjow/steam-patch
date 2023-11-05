@@ -74,7 +74,10 @@ jobs:
           mv target/x86_64-unknown-linux-gnu/release/steam-patch ~/rpmbuild/SOURCES/
           # mv steam-patch ~/rpmbuild/SOURCES/
           cp steam-patch.spec ~/rpmbuild/SPECS/
-
+      - name: 🛠️ Install Rust and Cargo with system package manager
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cargo rustc
       - name: 📦 Build RPM package
         run: |
 
