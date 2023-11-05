@@ -1,36 +1,40 @@
-# This is a basic workflow to help you get started with Actions
+name: RPM Build
 
-name: RPM build
-
-# Controls when the action will run.
 on:
-  # Triggers the workflow on push events to the main branch
-  push:
-    branches: [ main ]
-  # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
+  push:
+    tags:
+      - '*'
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This workflow contains a single job called "build"
-  build:
-    # The type of runner that the job will run on
+  package-rpm:
     runs-on: ubuntu-latest
 
-    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-    # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-    - uses: actions/checkout@v3
+      - name: 📚 Checkout Code
+        uses: actions/checkout@v3
 
-    # Runs a single command using the runners shell
-    - name: Run a one-line script
-      run: echo Hello, world!
+      - name: 📥 Download build artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: steam-patch
 
-    # Runs a set of commands using the runners shell
-    - name: Run a multi-line script
-      run: |
-        echo Add other actions to build,
-        echo test, and deploy your project.
-    - name: RPM Build
-      uses: naveenrajm7/rpmbuild@v1.0.0
-      
+      - name: 🛠️ Install RPM Build Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rpm
+
+      - name: 🏗️ Set up RPM build environment
+        run: |
+          mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+          mv steam-patch ~/rpmbuild/SOURCES/
+          cp steam-patch.spec ~/rpmbuild/SPECS/
+
+      - name: 📦 Build RPM package
+        run: rpmbuild -ba ~/rpmbuild/SPECS/steam-patch.spec
+
+      - name: 📤 Upload RPM package
+        uses: actions/upload-artifact@v3
+        with:
+          name: steam-patch-rpm
+          path: ~/rpmbuild/RPMS/x86_64/*.rpm
