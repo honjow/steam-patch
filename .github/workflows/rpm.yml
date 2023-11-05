@@ -71,7 +71,8 @@ jobs:
       - name: 🏗️ Set up RPM build environment
         run: |
           mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
-          mv steam-patch ~/rpmbuild/SOURCES/
+          mv target/x86_64-unknown-linux-gnu/release/steam-patch ~/rpmbuild/SOURCES/
+          # mv steam-patch ~/rpmbuild/SOURCES/
           cp steam-patch.spec ~/rpmbuild/SPECS/
 
       - name: 📦 Build RPM package
