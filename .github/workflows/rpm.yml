@@ -1,28 +1,13 @@
-name: Rust Build
+name: RPM Build
 
 on:
+  workflow_dispatch:
   push:
-    branches: [ main ]
     tags:
       - '*'
-  pull_request:
-    branches: [ main ]
-  workflow_dispatch:
-    inputs:
-      logLevel:
-        description: 'Log level'
-        required: true
-        default: 'warning'
-      tags:
-        description: 'Test tags'
-        required: false
-
-env:
-  CARGO_TERM_COLOR: always
 
 jobs:
-  build:
-
+  package-rpm:
     runs-on: ubuntu-latest
 
     steps:
@@ -33,7 +18,6 @@ jobs:
         run: |
           chmod +x ./install.sh
           chmod +x ./uninstall.sh
-
       - name: 📦 Warm up cache
         uses: actions/cache@v3
         continue-on-error: false
@@ -67,20 +51,42 @@ jobs:
         run: |
           sudo apt-get install upx
           upx --best target/x86_64-unknown-linux-gnu/release/steam-patch
-
       - name: 📦 Upload build
         uses: actions/upload-artifact@v2
         with:
           name: steam-patch
           path: target/x86_64-unknown-linux-gnu/release/steam-patch
 
-      - name: 🚀 Release
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: 🛠️ Install RPM Build Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rpm
+
+      - name: 🛠️ Install Rust and Cargo
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          source $HOME/.cargo/env
+          rustup default stable
+
+      - name: 🏗️ Set up RPM build environment
+        run: |
+          mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+          mv target/x86_64-unknown-linux-gnu/release/steam-patch ~/rpmbuild/SOURCES/
+          # mv steam-patch ~/rpmbuild/SOURCES/
+          cp steam-patch.spec ~/rpmbuild/SPECS/
+      - name: 🛠️ Install Rust and Cargo with system package manager
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cargo rustc
+      - name: 📦 Build RPM package
+        run: |
+
+          source $HOME/.cargo/env
+          echo "PATH=$PATH:$HOME/.cargo/bin" >> $GITHUB_ENV
+          rpmbuild -ba ~/rpmbuild/SPECS/steam-patch.spec
+
+      - name: 📤 Upload RPM package
+        uses: actions/upload-artifact@v3
         with:
-          files: |
-            target/x86_64-unknown-linux-gnu/release/steam-patch
-            install.sh
-            uninstall.sh
+          name: steam-patch-rpm
+          path: ~/rpmbuild/RPMS/x86_64/*.rpm
