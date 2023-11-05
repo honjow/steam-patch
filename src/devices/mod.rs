@@ -24,6 +24,9 @@ pub fn create_device() -> Option<Box<dyn Device>> {
                 "AMD Ryzen Z1 Extreme ASUSTeK COMPUTER INC. RC71L" => {
                     Some(Box::new(DeviceAlly::new()))
                 }
+                "AMD Ryzen Z1 Extreme LENOVO LNVNB161216" => {
+                    Some(Box::new(DeviceGeneric::new(30,800, 2700)))
+                }
 
                 // Ayaneo 2
                 "AMD Ryzen 7 6800U with Radeon Graphics AYANEO AYANEO 2" => {
