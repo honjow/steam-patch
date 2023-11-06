@@ -25,6 +25,7 @@ jobs:
           rustup default stable
       - name: 🏗️ Set up RPM build environment
         run: |
+          ls 
           mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
           cp steam-patch.spec ~/rpmbuild/SPECS/
       - name: 🛠️ Install Rust and Cargo with system package manager
@@ -33,9 +34,11 @@ jobs:
           sudo apt-get install -y cargo rustc
       - name: 📦 Build RPM package
         run: |
+          ls -al ~/rpmbuild/SPECS
+          ls -al ~/rpmbuild/
           source $HOME/.cargo/env
           echo "PATH=$PATH:$HOME/.cargo/bin" >> $GITHUB_ENV
-          rpmbuild -bb --target=x86_64 ~/rpmbbuild/SPECS/steam-patch.spec
+          rpmbuild -bb --target=x86_64 ~/rpmbuild/SPECS/steam-patch.spec
 
       - name: 📤 Upload RPM package
         uses: actions/upload-artifact@v3
