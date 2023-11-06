@@ -32,12 +32,13 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y cargo rustc
+          source $HOME/.cargo/env
+          rustc --version
+          cargo --version
       - name: 📦 Build RPM package
         run: |
           ls -al ~/rpmbuild/SPECS
           ls -al ~/rpmbuild/
-          source $HOME/.cargo/env
-          echo "PATH=$PATH:$HOME/.cargo/bin" >> $GITHUB_ENV
           rpmbuild -bb --target=x86_64 ~/rpmbuild/SPECS/steam-patch.spec
 
       - name: 📤 Upload RPM package
