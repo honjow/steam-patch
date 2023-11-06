@@ -48,7 +48,6 @@ install -m 644 %{SOURCE2} %{buildroot}/etc/systemd/system/
 install -m 747 %{SOURCE3} %{buildroot}/usr/bin/steamos-polkit-helpers/
 
 %post
-sed -i "s/USER/${SUDO_USER}/g" /etc/systemd/system/steam-patch.service
 sed -i "s/\$USER/${SUDO_USER}/g" /etc/systemd/system/steam-patch.service
 systemctl daemon-reload
 systemctl enable steam-patch.service
