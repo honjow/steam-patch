@@ -270,11 +270,9 @@ pub fn start_mapper(mut steam:SteamClient) -> Option<tokio::task::JoinHandle<()>
         })),
         None => {
             println!("No Ally-specific found, retrying in 2 seconds");
-            println!("N_key lost, attempting to trigger recovery script");
-            recoverNkey();
+            //println!("N_key lost, attempting to trigger recovery script");
+            //recoverNkey();
             
-
-
 
             thread::sleep(Duration::from_secs(2));
             tokio::spawn(async move {
