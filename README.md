@@ -1,5 +1,14 @@
 # ⚙️ Steam Patch
-Steam Patch is a tool designed to enhance your Steam experience by applying patches to the Steam client. 
+Steam Patch is a tool designed to enhance your Steam experience by applying patches to the Steam client.
+
+## Installation
+
+```
+git clone https://github.com/corando98/steam-patch
+cd steam-patch
+chmod +x install.sh
+./install.sh
+```
 
 ## 📋 Available Patches
 
