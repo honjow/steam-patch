@@ -38,14 +38,20 @@ impl Device for DeviceGeneric {
         // Update TDP
         let target_tdp = tdp as i32 * 1000;
         let boost_tdp = target_tdp + 2000;
-
-        let command = [
-            "ryzenadj",
-            &format!("--stapm-limit={}", target_tdp),
-            &format!("--fast-limit={}", boost_tdp),
-            &format!("--slow-limit={}", target_tdp),
-        ];
-        match utils::run_command(&command) {
+        let mut command: Vec<String>;
+        // echo 30 | sudo tee /sys/devices/platform/asus-nb-wmi/ppt_pl1_spl
+        // echo 43 | sudo tee /sys/devices/platform/asus-nb-wmi/ppt_pl2_sppt
+        // echo 53 | sudo tee /sys/devices/platform/asus-nb-wmi/ppt_fppt
+        command = vec![
+            "ryzenadj".to_string(),
+            format!("--stapm-limit={}", target_tdp),
+            format!("--fast-limit={}", boost_tdp),
+            format!("--slow-limit={}", target_tdp),
+        ]; 
+        
+        let command_strs: Vec<&str> = command.iter().map(|s| s.as_str()).collect();
+        println!("Command to run: {:?}",command);
+        match utils::run_command(&command_strs) {
             Ok(_) => println!("Set TDP successfully!"),
             Err(_) => println!("Couldn't set TDP"),
         }
@@ -72,15 +78,22 @@ impl Device for DeviceGeneric {
             // Listen to per app changes
             Patch {
                 text_to_find: "const t=c.Hm.deserializeBinary(e).toObject();Object.keys(t)".to_string(),
-                replacement_text: "const t=c.Hm.deserializeBinary(e).toObject(); console.log(t); fetch(`http://localhost:1338/update_settings`, { method: 'POST',  headers: {'Content-Type': 'application/json'}, body: JSON.stringify(t.settings)}); Object.keys(t)".to_string(),
+                replacement_text: "const t=c.Hm.deserializeBinary(e).toObject(); console.log(t); console.log(W); fetch(`http://localhost:1338/update_settings`, { method: 'POST',  headers: {'Content-Type': 'application/json'}, body: JSON.stringify(t.settings)}); Object.keys(t)".to_string(),
                 destination: PatchFile::Chunk,
             }, 
-            //
-            
-            // Replace Xbox menu button with Steam one
             Patch {
-                text_to_find: "/steaminputglyphs/xbox_button_logo.svg".to_string(),
-                replacement_text: "/steaminputglyphs/sc_button_steam.svg".to_string(),
+                text_to_find: "s.k_EControllerTypeFlags_XBox360".to_string(),
+                replacement_text: "s.k_EControllerTypeFlags_SteamControllerNeptune".to_string(),
+                destination: PatchFile::Chunk,
+            }, 
+            
+            // Replace Xbox menu button with Steam one CAUSING CRASH
+            // Raw literal strings with escape for REGEX
+            Patch {
+                text_to_find: r#"/steaminputglyphs/xbox_button_logo.svg"#.to_string(),
+                replacement_text: r#"return s.createElement(u.ActionGlyph, { button: n, size: u.EActionGlyphSize.Small})"#.to_string(),
+                
+                // style=\"width: 61.1px; height: auto; margin: -100% 0 -100% 0;\"#.to_string(),
                 destination: PatchFile::Chunk,
             },
 
@@ -88,7 +101,7 @@ impl Device for DeviceGeneric {
             Patch {
                 text_to_find: "DownloadComplete_Title\"),i=Ve(n,t.data.appid());const l=(0,H.Q2)();".to_string(),
                 replacement_text: "DownloadComplete_Title\"),i=Ve(n,t.data.appid()); SteamClient.Apps.GetResolutionOverrideForApp(t.data.appid()).then(res => res === \"Default\" && SteamClient.Apps.SetAppResolutionOverride(t.data.appid(), \"Native\")); const l=(0,H.Q2)();".to_string(),
-                destination: PatchFile::Chunk,
+                destination: PatchFile::Chunk, 
             },
         ]
     }

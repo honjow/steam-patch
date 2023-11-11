@@ -1,10 +1,11 @@
 use super::Device;
+use crate::config::{get_global_config, self};
 use crate::devices::device_generic::DeviceGeneric;
 use crate::devices::Patch;
 use crate::patch::PatchFile;
 use crate::server::SettingsRequest;
 use crate::steam::SteamClient;
-use crate::utils;
+use crate::{utils, main};
 use std::fs::File;
 use std::{fs, env};
 use std::process::Command;
@@ -12,17 +13,15 @@ use std::thread;
 use std::time::Duration;
 use std::io::{self, Write};
 
+
 pub struct DeviceAlly {
     device: DeviceGeneric,
 }
 
 impl DeviceAlly {
-    pub fn new() -> Self {
-        DeviceAlly {
-            device: DeviceGeneric::new(30, 800,2700),
-        }
-        
-    }
+    pub fn new(tdp: i8, gpu: i16) -> Self {
+        DeviceAlly {device: DeviceGeneric::new(tdp, 800,gpu)}
+}
 }
 
 impl Device for DeviceAlly {
@@ -71,7 +70,7 @@ impl Device for DeviceAlly {
             }
         }
     }
-
+    //Add more patches for device specific
     fn get_patches(&self) -> Vec<Patch> {
         let mut patches = self.device.get_patches();
         patches.push(Patch {
@@ -89,9 +88,34 @@ impl Device for DeviceAlly {
             val if (12..=25).contains(&val) => 0, // performance
             _ => 1,                               // turbo
         };
-        // self.set_thermalpolicy(thermal_policy);
-        self.device.set_tdp(tdp);
+        // self.set_thermalpolicy(thermal_policy); 
+
+        let conf = get_global_config();
+        if conf.legacy_tdp {
+            self.device.set_tdp(tdp);
+        } else { //Asus ROG ally 6.5+ kernel
+            let target_tdp = tdp as i32;
+            let boost_tdp = target_tdp + 2;
+            let command_target = &format!("echo {} | sudo tee /sys/devices/platform/asus-nb-wmi/ppt_pl1_spl", target_tdp);
+            let command_boost = &format!("echo {} | sudo tee /sys/devices/platform/asus-nb-wmi/ppt_pl2_sppt", boost_tdp);
+            let command_slow = &format!("echo {} | sudo tee /sys/devices/platform/asus-nb-wmi/ppt_fppt", target_tdp);
+            println!("Using asus TDP method");
+            let commands = vec![
+                vec!["bash", "-c", command_target],
+                vec!["bash", "-c", command_boost],
+                vec!["bash", "-c", command_slow],
+            ];
+            for cmd in commands {
+                println!("Command to run: {:?}",cmd);
+                match utils::run_command(&cmd) {
+                    Ok(_) => println!("Set TDP successfully!"),
+                    Err(e) => println!("Couldn't set TDP: {}", e),
+                }
+            }
+            
+        }
     }
+
     fn set_gpu(&self, gpu: i16) {
         //Placeholder for later implementations
         println!("New GPU clock: {}", gpu);
@@ -121,38 +145,9 @@ pub fn pick_device() -> Option<evdev::Device> {
             }
         }
     }
-
     None
 }
 
-
-// pub fn recoverNkey() -> io::Result<()> {
-//     // Get the current executable's directory
-//     let mut binary_path = env::current_exe()?;
-//     binary_path.pop(); // Remove the binary name, leaving just the directory
-
-//     // Specify the name of the script to run
-//     let script_name = "sleep_workaround";
-
-//     // Combine the directory with the script name to get the relative path
-//     let script_path = binary_path.join(script_name);
-
-//     // Use std::process::Command to run the script
-//     let output = Command::new("bash")
-//         .arg(script_path)
-//         .output()?;
-
-//     // Check the output
-//     if output.status.success() {
-//         let stdout = String::from_utf8_lossy(&output.stdout);
-//         println!("Script executed successfully: {}", stdout);
-//     } else {
-//         let stderr = String::from_utf8_lossy(&output.stderr);
-//         eprintln!("Script execution failed: {}", stderr);
-//     }
-
-//     Ok(())
-// }
 pub fn recoverNkey() -> io::Result<()> {
     // Check for "ROG Ally" in "/sys/devices/virtual/dmi/id/product_family"
     
@@ -175,7 +170,9 @@ pub fn recoverNkey() -> io::Result<()> {
 
 pub fn start_mapper(mut steam:SteamClient) -> Option<tokio::task::JoinHandle<()>> {
     let device = pick_device();
-    
+    let conf = get_global_config();
+    conf.mapper;
+    if conf.mapper {
     match device {
         Some(device) => Some(tokio::spawn(async move {
             if let Ok(mut events) = device.into_event_stream() {
@@ -271,16 +268,17 @@ pub fn start_mapper(mut steam:SteamClient) -> Option<tokio::task::JoinHandle<()>
         None => {
             println!("No Ally-specific found, retrying in 2 seconds");
             println!("N_key lost, attempting to trigger recovery script");
-            recoverNkey();
-            
-
-
-
             thread::sleep(Duration::from_secs(2));
+            if conf.auto_nkey_recovery {
+                let _ = recoverNkey();                 
+            }
             tokio::spawn(async move {
                 start_mapper(steam)
             });
             None
         }
     }
+} else {
+    None
+}
 }
