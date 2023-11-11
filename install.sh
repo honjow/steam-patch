@@ -28,7 +28,7 @@ if [ $FEDORA_BASE == 0 ]; then
    	if [ $STEAM_PATCH_STATUS == 0 ]; then
     		sudo dnf remove -y steam-patch
 	fi
-	sudo dnf install $HOME/rpmbuild/RPMS/x86_64/steam-patch*.rpm
+	sudo dnf install -y $HOME/rpmbuild/RPMS/x86_64/steam-patch*.rpm
 fi
 
 which pacman 2>/dev/null
