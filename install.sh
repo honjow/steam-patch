@@ -1,53 +1,52 @@
-#!/bin/sh
-
-[ "$UID" -eq 0 ] || exec sudo "$0" "$@"
+#!/bin/bash
 
 echo "Installing Steam Patch release..."
 
-USER_DIR="$(getent passwd $SUDO_USER | cut -d: -f6)"
-WORKING_FOLDER="${USER_DIR}/steam-patch"
+CURRENT_WD=$(pwd)
 
-# Create folder structure
-mkdir "${WORKING_FOLDER}"
 # Enable CEF debugging
-touch "${USER_DIR}/.steam/steam/.cef-enable-remote-debugging"
+touch "$HOME/.steam/steam/.cef-enable-remote-debugging"
 
-# Download latest release and install it
-RELEASE=$(curl -s 'https://api.github.com/repos/Maclay74/steam-patch/releases' | jq -r "first(.[] | select(.prerelease == "false"))")
-VERSION=$(jq -r '.tag_name' <<< ${RELEASE} )
-DOWNLOAD_URL=$(jq -r '.assets[].browser_download_url | select(endswith("steam-patch"))' <<< ${RELEASE})
+which dnf 2>/dev/null
+FEDORA_BASE=$?
 
-printf "Installing version %s...\n" "${VERSION}"
-curl -L $DOWNLOAD_URL --output ${WORKING_FOLDER}/steam-patch
-chmod +x ${WORKING_FOLDER}/steam-patch
+cat /etc/nobara-release
+NOBARA=$?
 
-systemctl --user stop steam-patch 2> /dev/null
-systemctl --user disable steam-patch 2> /dev/null
+if [ $FEDORA_BASE == 0 ]; then
+	echo -e '\nFedora based installation starting.\n'
+	sudo dnf install cargo
+	mkdir -p $HOME/rpmbuild/{SPECS,SOURCES}
+	cp steam-patch.spec $HOME/rpmbuild/SPECS
+	rpmbuild -bb $HOME/rpmbuild/SPECS/steam-patch.spec
+	sudo dnf install $HOME/rpmbuild/RPMS/x86_64/steam-patch*.rpm
+fi
 
-systemctl stop steam-patch 2> /dev/null
-systemctl disable steam-patch 2> /dev/null
+which pacman 2>/dev/null
+ARCH_BASE=$?
 
-# Add new service file
-cat > "${WORKING_FOLDER}/steam-patch.service" <<- EOM
-[Unit]
-Description=Steam Patches Loader
-Wants=network.target
-After=network.target
+cat /etc/os-release | grep ChimeraOS
+CHIMERA_BASE=$?
 
-[Service]
-Type=simple
-User=root
-ExecStart=${WORKING_FOLDER}/steam-patch --user=${SUDO_USER}
-WorkingDirectory=${WORKING_FOLDER}
-
-[Install]
-WantedBy=multi-user.target
-EOM
-
-rm -f "/etc/systemd/system/steam-patch.service"
-cp "${WORKING_FOLDER}/steam-patch.service" "/etc/systemd/system/steam-patch.service"
-
-# Run service
-systemctl daemon-reload
-systemctl enable steam-patch.service
-systemctl start steam-patch.service
+if [ $ARCH_BASE == 0 ]; then
+	echo -e '\nArch based installation starting.\n'
+	if [ $CHIMERA_BASE == 0 ]; then
+        	sudo frzr-unlock
+	fi
+	sudo pacman -Sy --noconfirm cargo gcc
+	printf "Installing steam-patch...\n"
+	cargo build -r
+	chmod +x $CURRENT_WD/target/release/steam-patch
+	sudo cp $CURRENT_WD/target/release/steam-patch /usr/bin/steam-patch
+	sed -i "s@\$USER@$USER@g" steam-patch.service
+	sudo cp steam-patch.service /etc/systemd/system/
+	sudo cp restart-steam-patch-on-boot.service /etc/systemd/system/
+	sudo cp /usr/bin/steamos-polkit-helpers/steamos-priv-write /usr/bin/steamos-polkit-helpers/steamos-priv-write-bkp
+	sudo cp steamos-priv-write-updated /usr/bin/steamos-polkit-helpers/steamos-priv-write
+	# Run service
+	systemctl daemon-reload
+	systemctl enable steam-patch.service
+	systemctl start steam-patch.service
+	systemctl enable restart-steam-patch-on-boot.service
+	systemctl start restart-steam-patch-on-boot.service
+fi

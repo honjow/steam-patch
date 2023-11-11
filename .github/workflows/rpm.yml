@@ -13,76 +13,26 @@ jobs:
     steps:
       - name: 📚 Checkout Code
         uses: actions/checkout@v2
-
-      - name: 🛠️ Set Script Permissions
-        run: |
-          chmod +x ./install.sh
-          chmod +x ./uninstall.sh
-      - name: 📦 Warm up cache
-        uses: actions/cache@v3
-        continue-on-error: false
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-cargo-
-
-      - name: 🦀 Setup Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          target: x86_64-unknown-linux-gnu
-          override: true
-
-      - name: 🏗️ Build
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --release --target x86_64-unknown-linux-gnu
-
-      - name: ✂️ Strip Debug Symbols
-        run: strip -s target/x86_64-unknown-linux-gnu/release/steam-patch
-
-      - name: ➡️ Compress executable with UPX
-        run: |
-          sudo apt-get install upx
-          upx --best target/x86_64-unknown-linux-gnu/release/steam-patch
-      - name: 📦 Upload build
-        uses: actions/upload-artifact@v2
-        with:
-          name: steam-patch
-          path: target/x86_64-unknown-linux-gnu/release/steam-patch
-
       - name: 🛠️ Install RPM Build Dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y rpm
-
-      - name: 🛠️ Install Rust and Cargo
-        run: |
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-          source $HOME/.cargo/env
-          rustup default stable
-
+          sudo apt-get install -y cargo rustc
       - name: 🏗️ Set up RPM build environment
         run: |
+          tree
           mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
-          mv target/x86_64-unknown-linux-gnu/release/steam-patch ~/rpmbuild/SOURCES/
-          # mv steam-patch ~/rpmbuild/SOURCES/
           cp steam-patch.spec ~/rpmbuild/SPECS/
       - name: 🛠️ Install Rust and Cargo with system package manager
         run: |
-          sudo apt-get update
           sudo apt-get install -y cargo rustc
+          source $HOME/.cargo/env
+          rustc --version
+          cargo --version
       - name: 📦 Build RPM package
         run: |
-
-          source $HOME/.cargo/env
-          echo "PATH=$PATH:$HOME/.cargo/bin" >> $GITHUB_ENV
+          ls -al ~/rpmbuild/SPECS
+          ls -al ~/rpmbuild/
           rpmbuild -ba ~/rpmbuild/SPECS/steam-patch.spec
 
       - name: 📤 Upload RPM package
