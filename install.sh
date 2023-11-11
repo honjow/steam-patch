@@ -26,7 +26,7 @@ if [ $FEDORA_BASE == 0 ]; then
  	sudo dnf list --installed | grep steam-patch
   	STEAM_PATCH_STATUS=$?
    	if [ $STEAM_PATCH_STATUS == 0 ]; then
-    		sudo dnf remove steam-patch
+    		sudo dnf remove -y steam-patch
 	fi
 	sudo dnf install $HOME/rpmbuild/RPMS/x86_64/steam-patch*.rpm
 fi
