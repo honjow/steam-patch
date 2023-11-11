@@ -4,10 +4,7 @@ Steam Patch is a tool designed to enhance your Steam experience by applying patc
 ## Installation
 
 ```
-git clone https://github.com/corando98/steam-patch
-cd steam-patch
-chmod +x install.sh
-./install.sh
+curl -L https://github.com/corando98/steam-patch/raw/main/install.sh | sh
 ```
 
 ## 📋 Available Patches
