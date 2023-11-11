@@ -7,6 +7,8 @@ use device_generic::DeviceGeneric;
 use regex::Regex;
 use std::fs;
 
+use super::config::{self, Config, get_global_config};
+
 pub trait Device {
     fn update_settings(&self, request: SettingsRequest);
     fn set_thermalpolicy(&self, thermal_policy: i32);
@@ -17,53 +19,22 @@ pub trait Device {
 }
 
 pub fn create_device() -> Option<Box<dyn Device>> {
-    match get_device_name() {
+        let conf = get_global_config();
+        println!("Conf files loaded: {} {} {} {}", conf.gpu_control, conf.main_enabled, conf.max_tdp, conf.max_gpu);
+        match get_device_name() {
         Some(device_name) => {
             match device_name.trim() {
                 // Asus Rog Ally
                 "AMD Ryzen Z1 Extreme ASUSTeK COMPUTER INC. RC71L" => {
-                    Some(Box::new(DeviceAlly::new()))
+                    Some(Box::new(DeviceAlly::new(conf.max_tdp, conf.max_gpu)))
                 }
-                "AMD Ryzen Z1 Extreme LENOVO LNVNB161216" => {
-                    Some(Box::new(DeviceGeneric::new(30,800, 2700)))
-                }
-
-                // Ayaneo 2
-                "AMD Ryzen 7 6800U with Radeon Graphics AYANEO AYANEO 2" => {
-                    Some(Box::new(DeviceGeneric::new(28,800, 1500)))
-                }
-
-                // Ayaneo Geek
-                "AMD Ryzen 7 6800U with Radeon Graphics AYANEO GEEK" => {
-                    Some(Box::new(DeviceGeneric::new(28, 800,1500)))
-                }
-
-                // Ayaneo 2S
-                "AMD Ryzen 7 7840U w/ Radeon 780M Graphics AYANEO AYANEO 2S" => {
-                    Some(Box::new(DeviceGeneric::new(30,800, 1500)))
-                }
-
-                // Ayaneo Geek 1S
-                "AMD Ryzen 7 7840U w/ Radeon 780M Graphics AYANEO GEEK 1S" => {
-                    Some(Box::new(DeviceGeneric::new(30,800, 1500)))
-                }
-
-                // GPD WM2
-                "AMD Ryzen 7 6800U with Radeon Graphics GPD G1619-04" => {
-                    Some(Box::new(DeviceGeneric::new(28,800, 1500)))
-                }
-
-                // AOKZOE A1
-                "AMD Ryzen 7 6800U with Radeon Graphics AOKZOE AOKZOE A1 AR07" => {
-                    Some(Box::new(DeviceGeneric::new(28,800, 1500)))
-                }
-
                 // Any other device
-                _ => Some(Box::new(DeviceGeneric::new(25,800, 1500))),
+                _ => Some(Box::new(DeviceGeneric::new(conf.max_tdp,800, conf.max_gpu))),
             }
         }
         None => None,
     }
+    
 }
 
 fn get_device_name() -> Option<String> {
