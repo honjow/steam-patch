@@ -7,6 +7,8 @@ use hyper::{Client, Uri, body};
 use inotify::{Inotify, WatchMask};
 use serde::{Deserialize};
 use std::collections::HashMap;
+use std::env;
+use std::f32::consts::E;
 use std::fs::{self, File};
 use std::io::{BufRead, BufReader, Error};
 use std::path::PathBuf;
@@ -39,14 +41,14 @@ impl SteamClient {
                 // Convert the `Path` to a string and handle the potential `None` case
                 if let Some(path_str) = path_file.to_str() {
                     let path_string = path_str.to_string();
-                    println!("Processing file: {}", path_string);
+                    // println!("Processing file: {}", path_string);
                     // Handle the Result of `read_to_string` with `unwrap_or_else`
                     let content = opened_files
                         .entry(path_string.clone())
                         .or_insert_with(|| {
                             match fs::read_to_string(&path_file) {
                                 Ok(content) => {
-                                    println!("File read successfully: {}", path_string);
+                                    // println!("File read successfully: {}", path_string);
                                     content
                                 }
                                 Err(e) => {
@@ -59,7 +61,7 @@ impl SteamClient {
                     let text_to_find = &patch.text_to_find;
                     let replacement_text = &patch.replacement_text;
                     if content.contains(text_to_find) {
-                        println!("Found text to replace in {}: '{}'", path_string, text_to_find);
+                        // println!("Found text to replace in {}: '{}'", path_string, text_to_find);
                         *content = content.replace(text_to_find, replacement_text);
                     } else {
                         println!("Text not found in {}: '{}'", path_string, text_to_find);
@@ -97,14 +99,14 @@ impl SteamClient {
                 // Convert the `Path` to a string and handle the potential `None` case
                 if let Some(path_str) = path_file.to_str() {
                     let path_string = path_str.to_string();
-                    println!("Processing file: {}", path_string);
+                    // println!("Processing file: {}", path_string);
                     // Handle the Result of `read_to_string` with `unwrap_or_else`
                     let content = opened_files
                         .entry(path_string.clone())
                         .or_insert_with(|| {
                             match fs::read_to_string(&path_file) {
                                 Ok(content) => {
-                                    println!("File read successfully: {}", path_string);
+                                    // println!("File read successfully: {}", path_string);
                                     content
                                 }
                                 Err(e) => {
@@ -117,10 +119,10 @@ impl SteamClient {
                     let text_to_find = &patch.text_to_find;
                     let replacement_text = &patch.replacement_text;
                     if content.contains(replacement_text) {
-                        println!("Found text to replace in {}: '{}'", path_string, text_to_find);
+                        // println!("Found text to replace in {}: '{}'", path_string, text_to_find);
                         *content = content.replace(replacement_text, text_to_find);
                     } else {
-                        println!("Text not found in {}: '{}'", path_string, text_to_find);
+                        // println!("Text not found in {}: '{}'", path_string, text_to_find);
                     }
                 } else {
                     // Handle the error if path_str is None
@@ -156,9 +158,7 @@ impl SteamClient {
                     }
                     Err(_) => {
                         eprintln!("Couldn't send message to Steam, retrying...");
-
                         self.connect().await;
-
                         retries -= 1;
                     }
                 },
@@ -263,11 +263,16 @@ impl SteamClient {
             ))
         })
     }
+    fn get_patch_file_path() -> Result<PathBuf, Error> {
+        let mut binary_path = env::current_exe()?;
+        binary_path.set_extension("patched");
+        Ok(binary_path)
+    }
 
     pub async fn watch() -> Option<tokio::task::JoinHandle<()>> {
         // If Steam client is already running, patch it and restart
+        let mut client = Self::new();
         if Self::is_running() {
-            let mut client = Self::new();
             client.connect().await;
 
             if let Some(device) = create_device() {
@@ -303,7 +308,6 @@ impl SteamClient {
         match inotify.watches().add(&log_path, WatchMask::MODIFY) {
             Ok(_) => println!("Watching log path: {:?}", log_path),
             Err(e) => {
-                eprintln!("Failed looking for {:?}", log_path);
                 eprintln!("Failed to add a watch to the log path: {:?}", e);
                 return None;
             }
@@ -312,8 +316,6 @@ impl SteamClient {
         println!("Watching Steam log...");
         let task = tokio::task::spawn_blocking(move || {
             let mut buffer = [0u8; 4096];
-            let mut client = Self::new();
-
             let mut process_flow = 0;
             loop {
                 if let Ok(events) = inotify.read_events_blocking(&mut buffer) {
@@ -351,7 +353,7 @@ impl SteamClient {
                                             match client.patch(device.get_patches()) {
                                                 Ok(_) => println!("Steam patched"),
                                                 Err(_) => eprintln!("Couldn't patch Steam"),
-                                            }
+                                            }          
                                         }
                                         process_flow = 0
                                     }
