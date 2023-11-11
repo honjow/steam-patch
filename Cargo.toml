@@ -15,6 +15,8 @@ regex = "1"
 evdev = { version = "0.12.1", features = ["tokio", "serde"]}
 hyper = { version = "0.14", features = ["full"] }
 inotify = "0.10.1"
+lazy_static = "1.4.0"
+toml = "0.5.8"
 
 [profile.release]
 opt-level = "z"
