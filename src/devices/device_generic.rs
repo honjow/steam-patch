@@ -90,10 +90,8 @@ impl Device for DeviceGeneric {
             // Replace Xbox menu button with Steam one CAUSING CRASH
             // Raw literal strings with escape for REGEX
             Patch {
-                text_to_find: r#"/steaminputglyphs/xbox_button_logo.svg"#.to_string(),
-                replacement_text: r#"return s.createElement(u.ActionGlyph, { button: n, size: u.EActionGlyphSize.Small})"#.to_string(),
-                
-                // style=\"width: 61.1px; height: auto; margin: -100% 0 -100% 0;\"#.to_string(),
+                text_to_find: r#"e="/steaminputglyphs/xbox_button_logo.svg""#.to_string(),
+                replacement_text: r#"return s.createElement(u.ActionGlyph, { button: n, size: u.EActionGlyphSize.Medium})"#.to_string(),
                 destination: PatchFile::Chunk,
             },
 
