@@ -1,7 +1,10 @@
 #!/bin/bash
 
-echo "Installing Steam Patch release..."
-
+echo -e "Installing Steam Patch...\n"
+cd $HOME
+sudo rm -rf ./steam-patch/
+git clone https://github.com/corando98/steam-patch
+cd steam-patch
 CURRENT_WD=$(pwd)
 
 # Enable CEF debugging
@@ -15,11 +18,17 @@ NOBARA=$?
 
 if [ $FEDORA_BASE == 0 ]; then
 	echo -e '\nFedora based installation starting.\n'
+	curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 	sudo dnf install cargo
 	mkdir -p $HOME/rpmbuild/{SPECS,SOURCES}
 	cp steam-patch.spec $HOME/rpmbuild/SPECS
 	rpmbuild -bb $HOME/rpmbuild/SPECS/steam-patch.spec
-	sudo dnf install $HOME/rpmbuild/RPMS/x86_64/steam-patch*.rpm
+ 	sudo dnf list --installed | grep steam-patch
+  	STEAM_PATCH_STATUS=$?
+   	if [ $STEAM_PATCH_STATUS == 0 ]; then
+    		sudo dnf remove -y steam-patch
+	fi
+	sudo dnf install -y $HOME/rpmbuild/RPMS/x86_64/steam-patch*.rpm
 fi
 
 which pacman 2>/dev/null
@@ -43,10 +52,12 @@ if [ $ARCH_BASE == 0 ]; then
 	sudo cp restart-steam-patch-on-boot.service /etc/systemd/system/
 	sudo cp /usr/bin/steamos-polkit-helpers/steamos-priv-write /usr/bin/steamos-polkit-helpers/steamos-priv-write-bkp
 	sudo cp steamos-priv-write-updated /usr/bin/steamos-polkit-helpers/steamos-priv-write
-	# Run service
-	systemctl daemon-reload
-	systemctl enable steam-patch.service
-	systemctl start steam-patch.service
-	systemctl enable restart-steam-patch-on-boot.service
-	systemctl start restart-steam-patch-on-boot.service
+	# Start and enable services
+	sudo systemctl daemon-reload
+	sudo systemctl stop handycon
+	sudo systemctl disable handycon
+	sudo systemctl enable steam-patch.service
+	sudo systemctl start steam-patch.service
+	sudo systemctl enable restart-steam-patch-on-boot.service
+	sudo systemctl start restart-steam-patch-on-boot.service
 fi
