@@ -2,7 +2,7 @@ name: Rust Build
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, beta]
     tags:
       - '*'
   pull_request:
