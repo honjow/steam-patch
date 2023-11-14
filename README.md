@@ -24,8 +24,8 @@ Offically tested devices include: ROG Ally, Legion Go
 
 For customization a configuration is in place, find the config.toml in the root of the repo. Example below.
 
-```#For changes to reflect on steamUI, restart steam-patch, and restart steam. (Current mitigation)
-
+```
+#For changes to reflect on steamUI, restart steam-patch, and restart steam. (Current mitigation)
 main_enabled = true
 tdp_control = true
 gpu_control = true
@@ -39,7 +39,8 @@ mapper = true #Enable disable the QAM and Steam button mapping
 auto_nkey_recovery = false #Attempts to suspend and resume the device if NKEY is lost
 
 Before adjusting the TDP, please ensure your device can support the new value. 
-There is a tangible risk of causing damage to your device otherwise. ```
+There is a tangible risk of causing damage to your device otherwise.
+```
 
 legacy_tdp - False, utilizes ryzenadj method of changing TDP, check if your device is compatible. ie. Legion Go, ROG Ally, etc
 mapper - Only ROG ally for now, maps the QAM/Steam button to the AC/CC buttons.
