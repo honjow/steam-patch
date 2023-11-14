@@ -37,10 +37,10 @@ legacy_tdp = false #true = ryzenadj, false = new method
 mapper = true #Enable disable the QAM and Steam button mapping
 #Experimental
 auto_nkey_recovery = false #Attempts to suspend and resume the device if NKEY is lost
-
+```
 Before adjusting the TDP, please ensure your device can support the new value. 
 There is a tangible risk of causing damage to your device otherwise.
-```
+
 
 legacy_tdp - False, utilizes ryzenadj method of changing TDP, check if your device is compatible. ie. Legion Go, ROG Ally, etc
 mapper - Only ROG ally for now, maps the QAM/Steam button to the AC/CC buttons.
