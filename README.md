@@ -46,7 +46,7 @@ legacy_tdp - False, utilizes ryzenadj method of changing TDP, check if your devi
 mapper - Only ROG ally for now, maps the QAM/Steam button to the AC/CC buttons.
 auto_nkey_recovery - Extrememly hacky way of recoverying the AC/CC button due to sleep/suspend issue on Ally, use with caution.
 
-## 🎯 Supported Devices
+## Steam Client
 
 Only compatible with Stable Steam client, use beta branch for beta Steam client (breaks often)
 
