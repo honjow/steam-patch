@@ -37,6 +37,7 @@ Generic features should work in most devices.
 
 For customization a configuration is in place, find the config.toml in the root of the repo. Example below.
 
+Default location is ~/steam-patch/config.toml
 
 ```
 #For changes to reflect on steamUI, restart steam-patch, and restart steam. (Current mitigation)
