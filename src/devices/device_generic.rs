@@ -78,7 +78,7 @@ impl Device for DeviceGeneric {
             // Listen to per app changes
             Patch {
                 text_to_find: "const t=c.Hm.deserializeBinary(e).toObject();Object.keys(t)".to_string(),
-                replacement_text: "const t=c.Hm.deserializeBinary(e).toObject(); console.log(t); console.log(W); fetch(`http://localhost:1338/update_settings`, { method: 'POST',  headers: {'Content-Type': 'application/json'}, body: JSON.stringify(t.settings)}); Object.keys(t)".to_string(),
+                replacement_text: "const t=c.Hm.deserializeBinary(e).toObject(); console.log(t); fetch(`http://localhost:1338/update_settings`, { method: 'POST',  headers: {'Content-Type': 'application/json'}, body: JSON.stringify(t.settings)}); Object.keys(t)".to_string(),
                 destination: PatchFile::Chunk,
             }, 
             Patch {
