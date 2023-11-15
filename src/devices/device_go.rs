@@ -163,7 +163,7 @@ async fn run_usbhid_dump(vendor_id: &str, product_id: &str, steam: &mut SteamCli
                                             steam.execute("GamepadNavTree.m_Controller.OnButtonActionInternal(true, 27, 2); console.log(\"Show Menu\");").await;
                                         }
                                         if data.index == 18 && data.value == "40" {
-                                            println!("Steam button");
+                                            println!("QAM button");
                                             steam.execute("GamepadNavTree.m_Controller.OnButtonActionInternal(true, 28, 2)").await; 
                                         }
 
