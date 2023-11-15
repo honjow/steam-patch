@@ -148,18 +148,32 @@ async fn run_usbhid_dump(vendor_id: &str, product_id: &str, steam: &mut SteamCli
 
                         if ln.is_empty() {
                             let data_array = process_block_data(&block_data);
-                            
-                            //Handle Steam button
-                            //
-                            if(data_array[18].value == "80"){
-                                println!("Steam button");
-                                steam.execute("GamepadNavTree.m_Controller.OnButtonActionInternal(true, 27, 2); console.log(\"Show Menu\");").await;
+                            for data in &data_array {
+                                match previous_values.get(&data.index) {
+                                    Some(prev_value) if prev_value == &data.value => {
+                                        //Value hasn't changed, do nothing or handle
+                                    }, 
+                                    _ => {
+                                        //Value has changed or is new, process accordingly
+                                        // println!("Changed: Index: {}, Value: {}", data.index, data.value);
+
+                                        // Example: handling Steam button
+                                        if data.index == 18 && data.value == "80" {
+                                            println!("Steam button");
+                                            steam.execute("GamepadNavTree.m_Controller.OnButtonActionInternal(true, 27, 2); console.log(\"Show Menu\");").await;
+                                        }
+                                        if data.index == 18 && data.value == "40" {
+                                            println!("Steam button");
+                                            steam.execute("GamepadNavTree.m_Controller.OnButtonActionInternal(true, 28, 2)").await; 
+                                        }
+
+                                         // Update the previous value
+                                         previous_values.insert(data.index, data.value.clone());
+                                    }
+                                }
                             }
-                            if(data_array[18].value == "40"){
-                                println!("Steam button");
-                                steam
-                                .execute("GamepadNavTree.m_Controller.OnButtonActionInternal(true, 28, 2)")
-                                .await;                            }
+                            // values aren't filtered here.
+                            
                             block_data.clear();
                         }
                     }
