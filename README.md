@@ -22,7 +22,7 @@ Here is a list of currently available patches that can be applied:
 
 1. **TDP Slider Fix for Quick Access Menu**: This patch addresses and resolves the issues with the TDP slider in the Quick Access Menu, ensuring a smoother user experience.
    
-2. **GPU Slider Fix for Quick Access Menu**: This patch integrates the QAM slider to the correct range, note: changes to the ```steamos-priv-write``` file are required. 
+2. **GPU Slider Fix for Quick Access Menu**: This patch integrates the QAM slider to the correct range, note: (ROG ONLY) changes to the ```steamos-priv-write``` file are required. 
 
 3. **Menu Icon Replacement** For a more integrated and consistent look, this patch replaces <picture> <source media="(prefers-color-scheme: light)" srcset="https://github-production-user-asset-6210df.s3.amazonaws.com/5504685/255038062-d99f3be6-ff5a-4570-9f21-a59204ccc804.png"> <img src="https://github-production-user-asset-6210df.s3.amazonaws.com/5504685/255038464-eb72c683-a1a5-4e5c-b81a-0131f8a76dd7.png" height="20" align="center"> </picture> icon to <picture> <source media="(prefers-color-scheme: light)" srcset="https://github.com/Maclay74/steam-patch/assets/5504685/9d15c179-bb92-4463-9a06-f8faecccf5fe"> <img src="https://github.com/Maclay74/steam-patch/assets/5504685/c76f7637-9f82-4786-b936-0ee3d99039e3" height="20" align="center"> </picture>
 4. **Mapping Device-Specific Buttons for Asus Rog Ally**: This patch adjusts the mapping of the Asus Rog Ally's device-specific buttons for the Main Menu and Quick Access Menu to match the button mapping of the Steam Deck.
