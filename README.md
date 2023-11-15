@@ -31,7 +31,12 @@ Here is a list of currently available patches that can be applied:
 
 Offically tested devices include: ROG Ally, Legion Go
 
+Generic features should work in most devices. 
+
+## 🛠️ Configuration file
+
 For customization a configuration is in place, find the config.toml in the root of the repo. Example below.
+
 
 ```
 #For changes to reflect on steamUI, restart steam-patch, and restart steam. (Current mitigation)
