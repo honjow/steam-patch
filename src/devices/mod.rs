@@ -1,8 +1,11 @@
 pub mod device_ally;
 pub mod device_generic;
+pub mod device_go;
+
 
 use crate::{patch::Patch, server::SettingsRequest};
 use device_ally::DeviceAlly;
+use device_go::DeviceGo;
 use device_generic::DeviceGeneric;
 use regex::Regex;
 use std::fs;
@@ -27,6 +30,10 @@ pub fn create_device() -> Option<Box<dyn Device>> {
                 // Asus Rog Ally
                 "AMD Ryzen Z1 Extreme ASUSTeK COMPUTER INC. RC71L" => {
                     Some(Box::new(DeviceAlly::new(conf.max_tdp, conf.max_gpu)))
+                }
+                // Asus Rog Ally
+                "AMD Ryzen Z1 Extreme LENOVO LNVNB161216" => {
+                    Some(Box::new(DeviceGo::new(conf.max_tdp, conf.max_gpu)))
                 }
                 // Any other device
                 _ => Some(Box::new(DeviceGeneric::new(conf.max_tdp,800, conf.max_gpu))),
@@ -54,6 +61,6 @@ fn get_device_name() -> Option<String> {
         Ok(str) => str.trim().to_string(),
         Err(_) => return None,
     };
-
+    
     Some(format!("{} {} {}", model, board_vendor, board_name))
 }
