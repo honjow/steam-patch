@@ -44,12 +44,12 @@ Default location is ~/steam-patch/config.toml
 main_enabled = true
 tdp_control = true
 gpu_control = true
-max_tdp = 25
-max_gpu = 2800
+max_tdp = 30               #If using smokeless bios you can push this higher
+max_gpu = 2700
 
 #Feature toggles
-legacy_tdp = false #true = ryzenadj, false = ACPI ROG ALLY METHOD
-mapper = true #Enable disable the QAM and Steam button mapping
+legacy_tdp = false         #true = ryzenadj, false = ACPI ROG ALLY METHOD
+mapper = true              #Enable disable the QAM and Steam button mapping
 
 #Experimental ROG ALLY ONLY
 auto_nkey_recovery = false #Attempts to suspend and resume the device if NKEY is lost
