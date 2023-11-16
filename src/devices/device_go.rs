@@ -7,11 +7,12 @@ use crate::server::SettingsRequest;
 use crate::steam::SteamClient;
 use crate::{utils, main};
 use std::fs::File;
+use std::path::Path;
 use std::{fs, env};
 use std::process::{Command, Stdio};
 use std::thread;
 use std::time::Duration;
-use std::io::{self, Write};
+use std::io::{self, Write, Read};
 use std::io::BufRead;
 use std::collections::HashMap;
 
@@ -46,7 +47,6 @@ impl Device for DeviceGo {
                     self.set_tdp(tdp);
                 }
             } 
-
             if let Some(gpu) = per_app.gpu_performance_manual_mhz {
                 self.set_gpu(gpu);
             }
@@ -82,133 +82,67 @@ impl Device for DeviceGo {
     }
 }
 
-pub fn pick_device() -> Option<evdev::Device> {
-    let target_vendor_id = 0x17efu16; //Device address hex
-    let target_product_id = 0x6183u16; //device product in hex
+fn read_from_hidraw(device_path: &str, buffer_size: usize) -> io::Result<Vec<u8>> {
+    let path = Path::new(device_path);
+    let mut device = File::open(path)?;
 
-    let devices = evdev::enumerate();
-    for (_, device) in devices {
-        let input_id = device.input_id();
-        println!("INPUT: {:?}", input_id);
-        
-        if input_id.vendor() == target_vendor_id && input_id.product() == target_product_id {
-            // if device.supported_keys().map_or(false, |keys: &evdev::AttributeSetRef<evdev::Key>| keys.contains(evdev::Key::BTN_SIDE)) {
-                return Some(device);   
-            // }
-        }
-    }
-    None
-}
+    let mut buffer = vec![0u8; buffer_size];
+    let bytes_read = device.read(&mut buffer)?;
 
-fn process_block_data(block: &str) -> Vec<ByteData> {
-    let mut data_array = Vec::new();
-    let mut index = 0;
-    // println!("One full block");
-    for line in block.lines() {
-        for byte in line.split_whitespace() {
-            data_array.push(ByteData {
-                index,
-                value: byte.to_string(),
-            });
-            index += 1;
-        }
-    }
-
-    data_array
-}
-// CREATE UDEV RULE TO ACCESS HID DEVICE OUTSIDE ROOT
-async fn run_usbhid_dump(vendor_id: &str, product_id: &str, steam: &mut SteamClient) {
-    println!("Running usbhid-dump for vendor_id: {}, product_id: {}", vendor_id, product_id);
-    
-    let cmd = "usbhid-dump";
-    let args = format!("-m {}:{} -e all -i 2", vendor_id, product_id);
-    let args_vec: Vec<&str> = args.split_whitespace().collect();
-    println!("Executing command: {}", cmd);
-
-    let mut process = Command::new(cmd)
-        .args(&args_vec)
-        .stdout(Stdio::piped())
-        .spawn()
-        .expect("Failed to start usbhid-dump process");
-    
-    let mut previous_values: HashMap<usize, String> = HashMap::new();
-    let mut block_data = String::new();
-
-    println!("Process started, reading output...");
-    if let Some(stdout) = process.stdout.take() {
-        let reader = io::BufReader::new(stdout);
-        for line in reader.lines() {
-            match line {
-                Ok(ln) => {
-                    if !ln.starts_with("001:") {
-                        // println!("Processing line: {}", ln);
-
-                        block_data.push_str(&ln);
-                        block_data.push('\n');
-
-                        if ln.is_empty() {
-                            let data_array = process_block_data(&block_data);
-                            for data in &data_array {
-                                match previous_values.get(&data.index) {
-                                    Some(prev_value) if prev_value == &data.value => {
-                                        //Value hasn't changed, do nothing or handle
-                                    }, 
-                                    _ => {
-                                        //Value has changed or is new, process accordingly
-                                        // println!("Changed: Index: {}, Value: {}", data.index, data.value);
-
-                                        // Example: handling Steam button
-                                        if data.index == 18 && data.value == "80" {
-                                            println!("Steam button");
-                                            steam.execute("GamepadNavTree.m_Controller.OnButtonActionInternal(true, 27, 2); console.log(\"Show Menu\");").await;
-                                        }
-                                        if data.index == 18 && data.value == "40" {
-                                            println!("Steam button");
-                                            steam.execute("GamepadNavTree.m_Controller.OnButtonActionInternal(true, 28, 2)").await; 
-                                        }
-
-                                         // Update the previous value
-                                         previous_values.insert(data.index, data.value.clone());
-                                    }
-                                }
-                            }
-                            // values aren't filtered here.
-                            
-                            block_data.clear();
-                        }
-                    }
-                }
-                Err(e) => {
-                    eprintln!("Error reading line: {}", e);
-                    break;
-                }
-            }
-        }
-    }
-
-    match process.wait() {
-        Ok(status) => println!("Process finished with status: {}", status),
-        Err(e) => eprintln!("Error waiting for process: {}", e),
-    }
+    buffer.truncate(bytes_read);
+    Ok(buffer)
 }
 
 pub fn start_mapper(mut steam:SteamClient) -> Option<tokio::task::JoinHandle<()>> {
     let conf = get_global_config();
-    let vendor_id: &str = "17ef";
-    let product_ids = vec!["6182", "6183"];
+    let device_path = "/dev/hidraw2"; 
+    let buffer_size = 1024;
+    let mut previous_data = Vec::new(); // Variable to keep track of prev states
     println!("Steam mapper {}", conf.mapper);
-    Some(tokio::spawn(async move {
-        if conf.mapper {
+    if conf.mapper {
+        Some(tokio::spawn(async move {
+            println!("Mapper enabled");
             loop {
-                for product_id in &product_ids {
-                    println!("Trying product ID {}", product_id);
-                    run_usbhid_dump(vendor_id, product_id, &mut steam).await;
-                    //Sleep between attempts
-                    tokio::time::sleep(Duration::from_secs(1)).await;
+                match read_from_hidraw(device_path, buffer_size) {
+                    Ok(data) => {
+
+                        if previous_data != data {
+                            // print!("Controller data: {:?}",data);
+                            if(data[18] == 64){
+                                println!("Show QAM");
+                                        steam
+                                            .execute("GamepadNavTree.m_Controller.OnButtonActionInternal(true, 28, 2)")
+                                            .await;
+                            }
+                            if(data[18] == 128){
+                                println!("Show Menu");
+                                        steam
+                                            .execute("GamepadNavTree.m_Controller.OnButtonActionInternal(true, 27, 2); console.log(\"Show Menu\");")
+                                            .await;
+                            }
+                            if(data[18] == 128 && data[19] == 32) {
+                                println!("Show keyboard")
+                            }
+                            
+                            //Update prev state
+                            previous_data = data.clone();
+                        }
+                    },
+                    Err(e) => {
+                        eprintln!("Failed to read from device: {}", e);
+                        eprintln!("Retrying in 1 second");
+                        thread::sleep(Duration::from_secs(1));
+                        tokio::spawn(async move {
+                            start_mapper(steam)
+                        });
+                        break
+                    },
                 }
-                tokio::time::sleep(Duration::from_secs(1)).await;
             }
-        }
-    }))
-    
+            
+        }))
+    } else {
+        println!("Mapper disabled");
+        None
+    }
 }
