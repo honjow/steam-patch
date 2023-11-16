@@ -47,10 +47,11 @@ gpu_control = true
 max_tdp = 25
 max_gpu = 2800
 
-#ROG ALLY specific toggles
-legacy_tdp = false #true = ryzenadj, false = new method
+#Feature toggles
+legacy_tdp = false #true = ryzenadj, false = ACPI ROG ALLY METHOD
 mapper = true #Enable disable the QAM and Steam button mapping
-#Experimental
+
+#Experimental ROG ALLY ONLY
 auto_nkey_recovery = false #Attempts to suspend and resume the device if NKEY is lost
 ```
 Before adjusting the TDP, please ensure your device can support the new value. 
