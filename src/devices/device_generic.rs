@@ -65,14 +65,14 @@ impl Device for DeviceGeneric {
         vec![
             // Max TDP = 28
             Patch {
-                text_to_find: "return[o,t,n,e=>r((()=>g.Get().SetTDPLimit(e)))".to_string(),
-                replacement_text: format!("return[o,t,{:?},e=>r((()=>g.Get().SetTDPLimit(e)))", self.max_tdp).to_string(),
+                text_to_find: "return[o,t,n,e=>a((()=>p.Get().SetTDPLimit(e)))".to_string(),
+                replacement_text: format!("return[o,t,{:?},e=>a((()=>p.Get().SetTDPLimit(e)))", self.max_tdp).to_string(),
                 destination: PatchFile::Chunk,
             },
             //Max GPU = 2700
             Patch {
-                text_to_find: "return[o,t,n,e=>r((()=>g.Get().SetGPUPerformanceManualMhz(e)))".to_string(),
-                replacement_text: format!("return[o,t,{:?},e=>r((()=>g.Get().SetGPUPerformanceManualMhz(e)))", self.max_gpu).to_string(),
+                text_to_find: "return[o,t,n,e=>a((()=>p.Get().SetGPUPerformanceManualMhz(e)))".to_string(),
+                replacement_text: format!("return[o,t,{:?},a=>r((()=>p.Get().SetGPUPerformanceManualMhz(e)))", self.max_gpu).to_string(),
                 destination: PatchFile::Chunk,
             },
             // Listen to per app changes
@@ -91,7 +91,7 @@ impl Device for DeviceGeneric {
             // Raw literal strings with escape for REGEX
             Patch {
                 text_to_find: r#"e="/steaminputglyphs/xbox_button_logo.svg""#.to_string(),
-                replacement_text: r#"return s.createElement(u.ActionGlyph, { button: n, size: u.EActionGlyphSize.Medium})"#.to_string(),
+                replacement_text: r#"return l.createElement(A.ActionGlyph, { button: n, size: A.EActionGlyphSize.Medium})"#.to_string(),
                 destination: PatchFile::Chunk,
             },
 
