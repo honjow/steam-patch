@@ -108,8 +108,8 @@ pub fn start_mapper(mut steam: SteamClient) -> Option<tokio::task::JoinHandle<()
                     Ok(data) => {
                         //Ensures that the data len is a whole packet of data
                         if previous_data != data && data.len() >= 64{
-                            println!("Controller data: {:?}",data);
-                            println!("Data le {:?}", data.len());
+                            // println!("Controller data: {:?}",data);
+                            // println!("Data le {:?}", data.len());
                             if(data[18] == 64){
                                 println!("Show QAM");
                                         steam
