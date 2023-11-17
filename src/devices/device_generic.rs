@@ -63,16 +63,15 @@ impl Device for DeviceGeneric {
 
     fn get_patches(&self) -> Vec<Patch> {
         vec![
-            // Max TDP = 28
-            Patch {
+            Patch { //Updated NOV16
                 text_to_find: "return[o,t,n,e=>a((()=>p.Get().SetTDPLimit(e)))".to_string(),
                 replacement_text: format!("return[o,t,{:?},e=>a((()=>p.Get().SetTDPLimit(e)))", self.max_tdp).to_string(),
                 destination: PatchFile::Chunk,
             },
             //Max GPU = 2700
-            Patch {
+            Patch { //Updated NOV16
                 text_to_find: "return[o,t,n,e=>a((()=>p.Get().SetGPUPerformanceManualMhz(e)))".to_string(),
-                replacement_text: format!("return[o,t,{:?},a=>r((()=>p.Get().SetGPUPerformanceManualMhz(e)))", self.max_gpu).to_string(),
+                replacement_text: format!("return[o,t,{:?},e=>a((()=>p.Get().SetGPUPerformanceManualMhz(e)))", self.max_gpu).to_string(),
                 destination: PatchFile::Chunk,
             },
             // Listen to per app changes
@@ -82,23 +81,23 @@ impl Device for DeviceGeneric {
                 destination: PatchFile::Chunk,
             }, 
             Patch {
-                text_to_find: "s.k_EControllerTypeFlags_XBox360".to_string(),
-                replacement_text: "s.k_EControllerTypeFlags_SteamControllerNeptune".to_string(),
+                text_to_find: "l.k_EControllerTypeFlags_XBox360".to_string(),
+                replacement_text: "l.k_EControllerTypeFlags_SteamControllerNeptune".to_string(),
                 destination: PatchFile::Chunk,
             }, 
             
             // Replace Xbox menu button with Steam one CAUSING CRASH
             // Raw literal strings with escape for REGEX
-            Patch {
+            Patch { //NOV16
                 text_to_find: r#"e="/steaminputglyphs/xbox_button_logo.svg""#.to_string(),
-                replacement_text: r#"return l.createElement(A.ActionGlyph, { button: n, size: A.EActionGlyphSize.Medium})"#.to_string(),
+                replacement_text: r#"return l.createElement(A.ActionGlyph, { button: n, size: A.EActionGlyphSize.Small})"#.to_string(),
                 destination: PatchFile::Chunk,
             },
 
             // Change resolution to Native (if Default) after installation
-            Patch {
-                text_to_find: "DownloadComplete_Title\"),i=Ve(n,t.data.appid());const l=(0,H.Q2)();".to_string(),
-                replacement_text: "DownloadComplete_Title\"),i=Ve(n,t.data.appid()); SteamClient.Apps.GetResolutionOverrideForApp(t.data.appid()).then(res => res === \"Default\" && SteamClient.Apps.SetAppResolutionOverride(t.data.appid(), \"Native\")); const l=(0,H.Q2)();".to_string(),
+            Patch { //Nov 16
+                text_to_find: "DownloadComplete_Title\"),r=Ue(n,t.data.appid());const s=(0,x.Q2)();".to_string(),
+                replacement_text: "DownloadComplete_Title\"),r=Ue(n,t.data.appid()); SteamClient.Apps.GetResolutionOverrideForApp(t.data.appid()).then(res => res === \"Default\" && SteamClient.Apps.SetAppResolutionOverride(t.data.appid(), \"Native\")); const s=(0,x.Q2)();".to_string(),
                 destination: PatchFile::Chunk, 
             },
         ]
