@@ -93,9 +93,62 @@ fn read_from_hidraw(device_path: &str, buffer_size: usize) -> io::Result<Vec<u8>
     Ok(buffer)
 }
 
-pub fn start_mapper(mut steam:SteamClient) -> Option<tokio::task::JoinHandle<()>> {
+// pub fn start_mapper(mut steam:SteamClient) -> Option<tokio::task::JoinHandle<()>> {
+//     let conf = get_global_config();
+//     let device_path = "/dev/hidraw2"; 
+//     let buffer_size = 1024;
+//     let mut previous_data = Vec::new(); // Variable to keep track of prev states
+//     println!("Steam mapper {}", conf.mapper);
+//     if conf.mapper {
+//         Some(tokio::spawn(async move {
+//             println!("Mapper enabled");
+//             loop {
+//                 match read_from_hidraw(device_path, buffer_size) {
+//                     Ok(data) => {
+
+//                         if previous_data != data {
+//                             // print!("Controller data: {:?}",data);
+//                             if(data[18] == 64){
+//                                 println!("Show QAM");
+//                                         steam
+//                                             .execute("GamepadNavTree.m_Controller.OnButtonActionInternal(true, 28, 2)")
+//                                             .await;
+//                             }
+//                             if(data[18] == 128){
+//                                 println!("Show Menu");
+//                                         steam
+//                                             .execute("GamepadNavTree.m_Controller.OnButtonActionInternal(true, 27, 2); console.log(\"Show Menu\");")
+//                                             .await;
+//                             }
+//                             if(data[18] == 128 && data[19] == 32) {
+//                                 println!("Show keyboard")
+//                             }
+                            
+//                             //Update prev state
+//                             previous_data = data.clone();
+//                         }
+//                     },
+//                     Err(e) => {
+//                         eprintln!("Failed to read from device: {}", e);
+//                         eprintln!("Retrying in 1 second");
+//                         thread::sleep(Duration::from_secs(1));
+//                         tokio::spawn(async move {
+//                             start_mapper(steam)
+//                         });
+//                         break
+//                     },
+//                 }
+//             }
+            
+//         }))
+//     } else {
+//         println!("Mapper disabled");
+//         None
+//     }
+// }
+pub fn start_mapper(mut steam: SteamClient) -> Option<tokio::task::JoinHandle<()>> {
     let conf = get_global_config();
-    let device_path = "/dev/hidraw2"; 
+    let mut device_path = "/dev/hidraw3"; // Initial device path
     let buffer_size = 1024;
     let mut previous_data = Vec::new(); // Variable to keep track of prev states
     println!("Steam mapper {}", conf.mapper);
@@ -105,9 +158,9 @@ pub fn start_mapper(mut steam:SteamClient) -> Option<tokio::task::JoinHandle<()>
             loop {
                 match read_from_hidraw(device_path, buffer_size) {
                     Ok(data) => {
-
                         if previous_data != data {
-                            // print!("Controller data: {:?}",data);
+                            println!("Controller data: {:?}",data);
+                            println!("Data le {:?}", data.len());
                             if(data[18] == 64){
                                 println!("Show QAM");
                                         steam
@@ -123,23 +176,26 @@ pub fn start_mapper(mut steam:SteamClient) -> Option<tokio::task::JoinHandle<()>
                             if(data[18] == 128 && data[19] == 32) {
                                 println!("Show keyboard")
                             }
-                            
-                            //Update prev state
-                            previous_data = data.clone();
                         }
+                            //                             //Update prev state
+                        previous_data = data.clone();
                     },
                     Err(e) => {
                         eprintln!("Failed to read from device: {}", e);
-                        eprintln!("Retrying in 1 second");
+                        eprintln!("Switching device path and retrying in 1 second");
+
+                        // Switch device path between hidraw2 and hidraw3
+                        device_path = if device_path == "/dev/hidraw2" {
+                            "/dev/hidraw3"
+                        } else {
+                            "/dev/hidraw2"
+                        };
+
                         thread::sleep(Duration::from_secs(1));
-                        tokio::spawn(async move {
-                            start_mapper(steam)
-                        });
-                        break
+                        // The recursive call to start_mapper might not be necessary anymore
                     },
                 }
             }
-            
         }))
     } else {
         println!("Mapper disabled");
