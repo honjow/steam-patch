@@ -19,7 +19,7 @@ NOBARA=$?
 if [ $FEDORA_BASE == 0 ]; then
 	echo -e '\nFedora based installation starting.\n'
 	curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-	sudo dnf install cargo
+	sudo dnf install -y cargo
 	mkdir -p $HOME/rpmbuild/{SPECS,SOURCES}
 	cp steam-patch.spec $HOME/rpmbuild/SPECS
 	rpmbuild -bb $HOME/rpmbuild/SPECS/steam-patch.spec
