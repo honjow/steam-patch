@@ -90,7 +90,7 @@ impl Device for DeviceGeneric {
             // Raw literal strings with escape for REGEX
             Patch { //NOV16
                 text_to_find: r#"e="/steaminputglyphs/xbox_button_logo.svg""#.to_string(),
-                replacement_text: r#"return l.createElement(A.ActionGlyph, { button: n, size: A.EActionGlyphSize.Small})"#.to_string(),
+                replacement_text: r#"return l.createElement(A.ActionGlyph, { button: n, size: A.EActionGlyphSize.Medium})"#.to_string(),
                 destination: PatchFile::Chunk,
             },
 
