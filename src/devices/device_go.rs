@@ -90,6 +90,7 @@ fn read_from_hidraw(device_path: &str, buffer_size: usize) -> io::Result<Vec<u8>
     let bytes_read = device.read(&mut buffer)?;
 
     buffer.truncate(bytes_read);
+
     Ok(buffer)
 }
 
@@ -105,7 +106,8 @@ pub fn start_mapper(mut steam: SteamClient) -> Option<tokio::task::JoinHandle<()
             loop {
                 match read_from_hidraw(device_path, buffer_size) {
                     Ok(data) => {
-                        if previous_data != data {
+                        //Ensures that the data len is a whole packet of data
+                        if previous_data != data && data.len() >= 64{
                             println!("Controller data: {:?}",data);
                             println!("Data le {:?}", data.len());
                             if(data[18] == 64){
@@ -123,6 +125,9 @@ pub fn start_mapper(mut steam: SteamClient) -> Option<tokio::task::JoinHandle<()
                             if(data[18] == 128 && data[19] == 32) {
                                 println!("Show keyboard")
                             }
+                        } else {
+                            println!("Device data length {:?}", data.len());
+                            println!("Device data received: {:?}", data);
                         }
                             //                             //Update prev state
                         previous_data = data.clone();
