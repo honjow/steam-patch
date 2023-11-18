@@ -118,9 +118,7 @@ pub fn start_mapper(mut steam: SteamClient) -> Option<tokio::task::JoinHandle<()
     println!("Steam mapper {}", conf.mapper);
     if conf.mapper {
         Some(tokio::spawn(async move {
-            println!("Mapper enabled");
-
-            let active_device = match find_active_hidraw_device("/dev/hidraw1", "/dev/hidraw2") {
+            let active_device = match find_active_hidraw_device("/dev/hidraw3", "/dev/hidraw2") {
                 Ok(Some(path)) => path,
                 _ => {
                     eprintln!("No active HIDRAW device found, retrying in 2 seconds");
