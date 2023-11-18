@@ -136,7 +136,7 @@ pub fn start_mapper(mut steam: SteamClient) -> Option<tokio::task::JoinHandle<()
                 match read_from_hidraw(&active_device, buffer_size) {
                     Ok(data) => {
                         //Ensures that the data len is a whole packet of data
-                        if previous_data != data && data.len() >= 64{
+                        if previous_data != data && data.len() == 64{
                             // println!("Controller data: {:?}",data);
                             // println!("Data le {:?}", data.len());
                             if(data[18] == 64){
@@ -154,21 +154,21 @@ pub fn start_mapper(mut steam: SteamClient) -> Option<tokio::task::JoinHandle<()
                             if(data[18] == 128 && data[19] == 32) {
                                 println!("Show keyboard")
                             }
-                        } else {
+                        } else if data.len() < 64 {
                             println!("Device data length {:?}", data.len());
-                            println!("Device data received: {:?}", data);
+                            println!("Device path {:?}", &active_device);
+                            // println!("Device data received: {:?}", data);
                         }
                             //                             //Update prev state
                         previous_data = data.clone();
                     },
                     Err(e) => {
                         eprintln!("Failed to read from device: {}", e);                       
-                        thread::sleep(Duration::from_secs(3));
                         print!("Error reading event stream, retrying in 3 second");
-                            thread::sleep(Duration::from_secs(3));
-                            tokio::spawn(async move {
-                                start_mapper(steam)
-                            });
+                        thread::sleep(Duration::from_secs(2));
+                        tokio::spawn(async move {
+                            start_mapper(steam)
+                        });
                         break
                     },
                 }
