@@ -2,11 +2,8 @@
 
 echo "Installing Steam Patch release..."
 
-USER_DIR="$(getent passwd $SUDO_USER | cut -d: -f6)"
-WORKING_FOLDER="${USER_DIR}/steam-patch"
+TEMP_FOLDER=$(mktemp -d)
 
-# Create folder structure
-mkdir -p "${WORKING_FOLDER}"
 # Enable CEF debugging
 touch "$HOME/.steam/steam/.cef-enable-remote-debugging"
 
@@ -15,6 +12,11 @@ RELEASE=$(curl -s 'https://api.github.com/repos/honjow/steam-patch/releases' | j
 VERSION=$(jq -r '.tag_name' <<< ${RELEASE} )
 DOWNLOAD_URL=$(jq -r '.assets[].browser_download_url | select(endswith("steam-patch"))' <<< ${RELEASE})
 
+SERVICES_URL=$(jq -r '.assets[].browser_download_url | select(endswith("steam-patch.service"))' <<< ${RELEASE})
+SERVICES_BOOT_URL=$(jq -r '.assets[].browser_download_url | select(endswith("restart-steam-patch-on-boot.service"))' <<< ${RELEASE})
+CONFIG_URL=$(jq -r '.assets[].browser_download_url | select(endswith("config.toml"))' <<< ${RELEASE})
+POLKIT_URL=$(jq -r '.assets[].browser_download_url | select(endswith("steamos-priv-write-updated"))' <<< ${RELEASE})
+
 systemctl --user stop steam-patch 2> /dev/null
 systemctl --user disable steam-patch 2> /dev/null
 
@@ -22,30 +24,42 @@ systemctl stop steam-patch 2> /dev/null
 systemctl disable steam-patch 2> /dev/null
 
 printf "Installing version %s...\n" "${VERSION}"
-curl -L $DOWNLOAD_URL --output ${WORKING_FOLDER}/steam-patch
-chmod +x ${WORKING_FOLDER}/steam-patch
+curl -L $DOWNLOAD_URL --output ${TEMP_FOLDER}/steam-patch
+curl -L $SERVICES_URL --output ${TEMP_FOLDER}/steam-patch.service
+curl -L $SERVICES_BOOT_URL --output ${TEMP_FOLDER}/restart-steam-patch-on-boot.service
+curl -L $CONFIG_URL --output ${TEMP_FOLDER}/config.toml
+curl -L $POLKIT_URL --output ${TEMP_FOLDER}/steamos-priv-write-updated
 
-# Add new service file
-cat > "${WORKING_FOLDER}/steam-patch.service" <<- EOM
-[Unit]
-Description=Steam Patches Loader
-Wants=network.target
-After=network.target
+sed -i "s@\$USER@$USER@g" ${TEMP_FOLDER}/steam-patch.service
+sudo cp ${TEMP_FOLDER}/steam-patch.service /etc/systemd/system/
+sudo cp ${TEMP_FOLDER}/restart-steam-patch-on-boot.service /etc/systemd/system/
 
-[Service]
-Type=simple
-User=root
-ExecStart=${WORKING_FOLDER}/steam-patch --user=${SUDO_USER}
-WorkingDirectory=${WORKING_FOLDER}
+polkit_bak_path=/usr/bin/steamos-polkit-helpers/steamos-priv-write.bak
+if [ ! -f "$polkit_bak_path" ]; then
+    echo "Backing up steamos-priv-write..."
+    sudo cp /usr/bin/steamos-polkit-helpers/steamos-priv-write /usr/bin/steamos-polkit-helpers/steamos-priv-write.bak
+fi
 
-[Install]
-WantedBy=multi-user.target
-EOM
+sudo cp ${TEMP_FOLDER}/steamos-priv-write-updated /usr/bin/steamos-polkit-helpers/steamos-priv-write
 
-rm -f "/etc/systemd/system/steam-patch.service"
-cp "${WORKING_FOLDER}/steam-patch.service" "/etc/systemd/system/steam-patch.service"
+chmod +x ${TEMP_FOLDER}/steam-patch
+sudo cp ${TEMP_FOLDER}/steam-patch /usr/bin/steam-patch
+
+config_path=$HOME/steam-patch/config.toml
+if [ -f "$config_path" ]; then
+    echo "Backing up config.toml..."
+    cp $config_path "${config_path}.bak"
+fi
+cp ${TEMP_FOLDER}/config.toml $HOME/steam-patch/config.toml
+
+DEVICENAME=$(cat /sys/devices/virtual/dmi/id/product_name)
+if [[ "${DEVICENAME}" == "ROG Ally RC71L_RC71L" ]]; then
+    sed -i "s/auto_nkey_recovery = false/auto_nkey_recovery = true/" $HOME/steam-patch/config.toml
+fi
 
 # Run service
-systemctl daemon-reload
-systemctl enable steam-patch.service
-systemctl start steam-patch.service
+sudo systemctl daemon-reload
+sudo systemctl enable steam-patch.service
+sudo systemctl start steam-patch.service
+sudo systemctl enable restart-steam-patch-on-boot.service
+sudo systemctl start restart-steam-patch-on-boot.service

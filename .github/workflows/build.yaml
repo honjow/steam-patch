@@ -89,3 +89,6 @@ jobs:
             install.sh
             install_cn.sh
             uninstall.sh
+            *.service
+            config.toml
+            steamos-priv-write-updated
