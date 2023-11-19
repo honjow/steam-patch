@@ -34,42 +34,42 @@ pub fn create_device() -> Option<Box<dyn Device>> {
 
                 // Ayaneo Geek
                 "AMD Ryzen 7 6800U with Radeon Graphics AYANEO GEEK" => {
-                    Some(Box::new(DeviceGeneric::new(28)))
+                    Some(Box::new(DeviceGeneric::new(28, 200, conf.max_gpu)))
                 }
 
                 // Ayaneo 2S
                 "AMD Ryzen 7 7840U w/ Radeon 780M Graphics AYANEO AYANEO 2S" => {
-                    Some(Box::new(DeviceGeneric::new(30)))
+                    Some(Box::new(DeviceGeneric::new(30, 800, conf.max_gpu)))
                 }
 
                 // Ayaneo Geek 1S
                 "AMD Ryzen 7 7840U w/ Radeon 780M Graphics AYANEO GEEK 1S" => {
-                    Some(Box::new(DeviceGeneric::new(30)))
+                    Some(Box::new(DeviceGeneric::new(30, 800, conf.max_gpu)))
                 }
 
                 // GPD WM2
                 "AMD Ryzen 7 6800U with Radeon Graphics GPD G1619-04" => {
-                    Some(Box::new(DeviceGeneric::new(28)))
+                    Some(Box::new(DeviceGeneric::new(28, 200, conf.max_gpu)))
                 }
 
                 // AOKZOE A1
                 "AMD Ryzen 7 6800U with Radeon Graphics AOKZOE AOKZOE A1 AR07" => {
-                    Some(Box::new(DeviceGeneric::new(28)))
+                    Some(Box::new(DeviceGeneric::new(28, 200, conf.max_gpu)))
                 }
                 "AMD Ryzen Z1 Extreme LENOVO LNVNB161216" => {
                     Some(Box::new(DeviceGo::new(conf.max_tdp, conf.max_gpu)))
                 }
 
                 s if s.contains("5560U") => {
-                    Some(Box::new(DeviceGeneric::new(18)))
+                    Some(Box::new(DeviceGeneric::new(18, 200, conf.max_gpu)))
                 }
 
                 s if s.contains("6800U") => {
-                    Some(Box::new(DeviceGeneric::new(30)))
+                    Some(Box::new(DeviceGeneric::new(30, 200, conf.max_gpu)))
                 }
 
                 s if s.contains("7840U") => {
-                    Some(Box::new(DeviceGeneric::new(30)))
+                    Some(Box::new(DeviceGeneric::new(30, 200, conf.max_gpu)))
                 }
                 // Any other device
                 _ => Some(Box::new(DeviceGeneric::new(conf.max_tdp,800, conf.max_gpu))),
