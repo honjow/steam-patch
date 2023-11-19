@@ -1,0 +1,42 @@
+name: RPM Build
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  package-rpm:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📚 Checkout Code
+        uses: actions/checkout@v2
+      - name: 🛠️ Install RPM Build Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rpm
+          sudo apt-get install -y cargo rustc
+      - name: 🏗️ Set up RPM build environment
+        run: |
+          tree
+          mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+          cp steam-patch.spec ~/rpmbuild/SPECS/
+      - name: 🛠️ Install Rust and Cargo with system package manager
+        run: |
+          sudo apt-get install -y cargo rustc
+          source $HOME/.cargo/env
+          rustc --version
+          cargo --version
+      - name: 📦 Build RPM package
+        run: |
+          ls -al ~/rpmbuild/SPECS
+          ls -al ~/rpmbuild/
+          rpmbuild -ba ~/rpmbuild/SPECS/steam-patch.spec
+
+      - name: 📤 Upload RPM package
+        uses: actions/upload-artifact@v3
+        with:
+          name: steam-patch-rpm
+          path: ~/rpmbuild/RPMS/x86_64/*.rpm

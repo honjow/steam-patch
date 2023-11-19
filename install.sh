@@ -1,6 +1,4 @@
-#!/bin/sh
-
-[ "$UID" -eq 0 ] || exec sudo "$0" "$@"
+#!/bin/bash
 
 echo "Installing Steam Patch release..."
 
@@ -10,7 +8,7 @@ WORKING_FOLDER="${USER_DIR}/steam-patch"
 # Create folder structure
 mkdir -p "${WORKING_FOLDER}"
 # Enable CEF debugging
-touch "${USER_DIR}/.steam/steam/.cef-enable-remote-debugging"
+touch "$HOME/.steam/steam/.cef-enable-remote-debugging"
 
 # Download latest release and install it
 RELEASE=$(curl -s 'https://api.github.com/repos/honjow/steam-patch/releases' | jq -r "first(.[] | select(.prerelease == "false"))")

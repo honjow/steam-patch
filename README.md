@@ -1,5 +1,5 @@
 # ⚙️ Steam Patch
-Steam Patch is a tool designed to enhance your Steam experience by applying patches to the Steam client. 
+Steam Patch is a tool designed to enhance your Steam experience by applying patches to the Steam client.
 
 ## 📥 Installation
 To install Steam Patch, run next command in your terminal
@@ -20,36 +20,54 @@ This script will add a new service to `systemctl` and apply the necessary patche
 Here is a list of currently available patches that can be applied:
 
 1. **TDP Slider Fix for Quick Access Menu**: This patch addresses and resolves the issues with the TDP slider in the Quick Access Menu, ensuring a smoother user experience.
+   
+2. **GPU Slider Fix for Quick Access Menu**: This patch integrates the QAM slider to the correct range, note: (ROG ONLY) changes to the ```steamos-priv-write``` file are required. 
 
-2. **Menu Icon Replacement** For a more integrated and consistent look, this patch replaces <picture> <source media="(prefers-color-scheme: light)" srcset="https://github-production-user-asset-6210df.s3.amazonaws.com/5504685/255038062-d99f3be6-ff5a-4570-9f21-a59204ccc804.png"> <img src="https://github-production-user-asset-6210df.s3.amazonaws.com/5504685/255038464-eb72c683-a1a5-4e5c-b81a-0131f8a76dd7.png" height="20" align="center"> </picture> icon to <picture> <source media="(prefers-color-scheme: light)" srcset="https://github.com/Maclay74/steam-patch/assets/5504685/9d15c179-bb92-4463-9a06-f8faecccf5fe"> <img src="https://github.com/Maclay74/steam-patch/assets/5504685/c76f7637-9f82-4786-b936-0ee3d99039e3" height="20" align="center"> </picture>
-3. **Mapping Device-Specific Buttons for Asus Rog Ally**: This patch adjusts the mapping of the Asus Rog Ally's device-specific buttons for the Main Menu and Quick Access Menu to match the button mapping of the Steam Deck..
+3. **Menu Icon Replacement** For a more integrated and consistent look, this patch replaces <picture> <source media="(prefers-color-scheme: light)" srcset="https://github-production-user-asset-6210df.s3.amazonaws.com/5504685/255038062-d99f3be6-ff5a-4570-9f21-a59204ccc804.png"> <img src="https://github-production-user-asset-6210df.s3.amazonaws.com/5504685/255038464-eb72c683-a1a5-4e5c-b81a-0131f8a76dd7.png" height="20" align="center"> </picture> icon to <picture> <source media="(prefers-color-scheme: light)" srcset="https://github.com/Maclay74/steam-patch/assets/5504685/9d15c179-bb92-4463-9a06-f8faecccf5fe"> <img src="https://github.com/Maclay74/steam-patch/assets/5504685/c76f7637-9f82-4786-b936-0ee3d99039e3" height="20" align="center"> </picture>
+4. **Mapping Device-Specific Buttons for Asus Rog Ally**: This patch adjusts the mapping of the Asus Rog Ally's device-specific buttons for the Main Menu and Quick Access Menu to match the button mapping of the Steam Deck.
 
 ## 🎯 Supported Devices
 
-Below is a list of devices supported by the Steam Patch:
+Offically tested devices include: ROG Ally, Legion Go
 
-- **Asus Rog Ally** (30 TDP, changes thermal policy) 
-- Aya Neo 2, Geek 1S (28 TDP)
-- GPD WM2 (28 TDP)
-- Any other AMD device (25 TDP)
+Generic features should work in most devices. 
 
-⚠️ **Please note**: From version 0.5 onwards, for **Asus Rog Ally**, it becomes necessary to disable **HandyGCCS**. 
-This is because the patch now uses a different method to support the Menu and QAM buttons, 
-and HandyGCCS can interfere with this new approach. Use the following command to disable HandyGCCS:
-```
-sudo systemctl disable handycon
-```
-To enable it back:
-```
-sudo systemctl enable handycon
-```
+## 🛠️ Configuration file
 
+For customization a configuration is in place, find the config.toml in the root of the repo. Example below.
+
+Default location is ~/steam-patch/config.toml
+
+```
+#For changes to reflect on steamUI, restart steam-patch, and restart steam. (Current mitigation)
+main_enabled = true
+tdp_control = true
+gpu_control = true
+max_tdp = 30               #If using smokeless bios you can push this higher
+max_gpu = 2700
+
+#Feature toggles
+legacy_tdp = false         #true = ryzenadj, false = ACPI ROG ALLY METHOD
+mapper = true              #Enable disable the QAM and Steam button mapping
+
+#Experimental ROG ALLY ONLY
+auto_nkey_recovery = false #Attempts to suspend and resume the device if NKEY is lost
+```
 Before adjusting the TDP, please ensure your device can support the new value. 
-There is a tangible risk of causing damage to your device otherwise. 
-If you're aware that your device has different limitations, kindly reach out to me via 
-[Discord](https://discordapp.com/users/maclay74), 
-[Telegram](https://t.me/mikefinch), or 
-[email](mailto:mishakozlov74@gmail.com), and I will handle it.
+There is a tangible risk of causing damage to your device otherwise.
+
+
+legacy_tdp - False, utilizes ryzenadj method of changing TDP, check if your device is compatible. ie. Legion Go, ROG Ally, etc
+mapper - Only ROG ally for now, maps the QAM/Steam button to the AC/CC buttons.
+auto_nkey_recovery - Extrememly hacky way of recoverying the AC/CC button due to sleep/suspend issue on Ally, use with caution.
+
+## Steam Client
+
+Only compatible with Stable Steam client, use beta branch for beta Steam client (breaks often)
+
+## Credits
+
+This project wouldn't have been possible without the work of Maclay74 for his base integration under the hood, thank you!
 
 ## 📝 License
 

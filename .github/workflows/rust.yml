@@ -1,24 +1,12 @@
 name: Rust Build
 
-permissions:
-  contents: write
-
 on:
   push:
-    branches: [ main, beta]
+    branches: [ main ]
     tags:
       - '*'
   pull_request:
     branches: [ main ]
-  workflow_dispatch:
-    inputs:
-      logLevel:
-        description: 'Log level'
-        required: true
-        default: 'warning'
-      tags:
-        description: 'Test tags'
-        required: false
 
 env:
   CARGO_TERM_COLOR: always
@@ -35,7 +23,6 @@ jobs:
       - name: 🛠️ Set Script Permissions
         run: |
           chmod +x ./install.sh
-          chmod +x ./install_cn.sh
           chmod +x ./uninstall.sh
 
       - name: 📦 Warm up cache
@@ -87,5 +74,4 @@ jobs:
           files: |
             target/x86_64-unknown-linux-gnu/release/steam-patch
             install.sh
-            install_cn.sh
             uninstall.sh

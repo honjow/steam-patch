@@ -1,31 +1,35 @@
 pub mod device_ally;
 pub mod device_generic;
+pub mod device_go;
+
 
 use crate::{patch::Patch, server::SettingsRequest};
 use device_ally::DeviceAlly;
+use device_go::DeviceGo;
 use device_generic::DeviceGeneric;
 use regex::Regex;
 use std::fs;
 
+use super::config::{self, Config, get_global_config};
+
 pub trait Device {
     fn update_settings(&self, request: SettingsRequest);
+    fn set_thermalpolicy(&self, thermal_policy: i32);
     fn set_tdp(&self, tdp: i8);
+    fn set_gpu(&self, gpu: i16);
     fn get_patches(&self) -> Vec<Patch>;
     fn get_key_mapper(&self) -> Option<tokio::task::JoinHandle<()>>;
 }
 
 pub fn create_device() -> Option<Box<dyn Device>> {
-    match get_device_name() {
+        let conf = get_global_config();
+        println!("Conf files loaded: {} {} {} {}", conf.gpu_control, conf.main_enabled, conf.max_tdp, conf.max_gpu);
+        match get_device_name() {
         Some(device_name) => {
             match device_name.trim() {
                 // Asus Rog Ally
                 "AMD Ryzen Z1 Extreme ASUSTeK COMPUTER INC. RC71L" => {
-                    Some(Box::new(DeviceAlly::new()))
-                }
-
-                // Ayaneo 2
-                "AMD Ryzen 7 6800U with Radeon Graphics AYANEO AYANEO 2" => {
-                    Some(Box::new(DeviceGeneric::new(28)))
+                    Some(Box::new(DeviceAlly::new(conf.max_tdp, conf.max_gpu)))
                 }
 
                 // Ayaneo Geek
@@ -43,26 +47,6 @@ pub fn create_device() -> Option<Box<dyn Device>> {
                     Some(Box::new(DeviceGeneric::new(30)))
                 }
 
-                // Ayaneo Air 1S
-                "AMD Ryzen 7 7840U w/ Radeon 780M Graphics AYANEO AIR 1S" => {
-                    Some(Box::new(DeviceGeneric::new(30)))
-                }
-
-                // Ayaneo Air
-                "AMD Ryzen 5 5560U with Radeon Graphics AYANEO AYANEO AIR" => {
-                    Some(Box::new(DeviceGeneric::new(18)))
-                }
-
-                // Ayaneo Air Pro 5560U
-                "AMD Ryzen 5 5560U with Radeon Graphics AYANEO AYANEO AIR Pro" => {
-                    Some(Box::new(DeviceGeneric::new(18)))
-                }
-
-                // Ayaneo Air Pro 5825U
-                "AMD Ryzen 7 5825U with Radeon Graphics AYANEO AYANEO AIR Pro" => {
-                    Some(Box::new(DeviceGeneric::new(25)))
-                }
-
                 // GPD WM2
                 "AMD Ryzen 7 6800U with Radeon Graphics GPD G1619-04" => {
                     Some(Box::new(DeviceGeneric::new(28)))
@@ -71,6 +55,9 @@ pub fn create_device() -> Option<Box<dyn Device>> {
                 // AOKZOE A1
                 "AMD Ryzen 7 6800U with Radeon Graphics AOKZOE AOKZOE A1 AR07" => {
                     Some(Box::new(DeviceGeneric::new(28)))
+                }
+                "AMD Ryzen Z1 Extreme LENOVO LNVNB161216" => {
+                    Some(Box::new(DeviceGo::new(conf.max_tdp, conf.max_gpu)))
                 }
 
                 s if s.contains("5560U") => {
@@ -84,13 +71,13 @@ pub fn create_device() -> Option<Box<dyn Device>> {
                 s if s.contains("7840U") => {
                     Some(Box::new(DeviceGeneric::new(30)))
                 }
-
                 // Any other device
-                _ => Some(Box::new(DeviceGeneric::new(25))),
+                _ => Some(Box::new(DeviceGeneric::new(conf.max_tdp,800, conf.max_gpu))),
             }
         }
         None => None,
     }
+    
 }
 
 fn get_device_name() -> Option<String> {
@@ -110,6 +97,6 @@ fn get_device_name() -> Option<String> {
         Ok(str) => str.trim().to_string(),
         Err(_) => return None,
     };
-
+    
     Some(format!("{} {} {}", model, board_vendor, board_name))
 }
