@@ -2,6 +2,16 @@
 
 echo "Installing Steam Patch release..."
 
+OLD_DIR="$HOME/steam-patch"
+
+# 获取 $USER_DIR/steam-patch 的所属用户 如果是root， 则删除
+if [ -d "$OLD_DIR" ]; then
+    USER_DIR_OWNER=$(stat -c '%U' $OLD_DIR)
+    if [ "$USER_DIR_OWNER" == "root" ]; then
+        sudo rm -rf $OLD_DIR
+    fi
+fi
+
 TEMP_FOLDER=$(mktemp -d)
 
 # Enable CEF debugging
@@ -17,11 +27,11 @@ SERVICES_BOOT_URL=$(jq -r '.assets[].browser_download_url | select(endswith("res
 CONFIG_URL=$(jq -r '.assets[].browser_download_url | select(endswith("config.toml"))' <<< ${RELEASE})
 POLKIT_URL=$(jq -r '.assets[].browser_download_url | select(endswith("steamos-priv-write-updated"))' <<< ${RELEASE})
 
-systemctl --user stop steam-patch 2> /dev/null
-systemctl --user disable steam-patch 2> /dev/null
+sudo systemctl --user stop steam-patch 2> /dev/null
+sudo systemctl --user disable steam-patch 2> /dev/null
 
-systemctl stop steam-patch 2> /dev/null
-systemctl disable steam-patch 2> /dev/null
+sudo systemctl stop steam-patch 2> /dev/null
+sudo systemctl disable steam-patch 2> /dev/null
 
 printf "Installing version %s...\n" "${VERSION}"
 curl -L $DOWNLOAD_URL --output ${TEMP_FOLDER}/steam-patch
@@ -45,6 +55,7 @@ sudo cp ${TEMP_FOLDER}/steamos-priv-write-updated /usr/bin/steamos-polkit-helper
 chmod +x ${TEMP_FOLDER}/steam-patch
 sudo cp ${TEMP_FOLDER}/steam-patch /usr/bin/steam-patch
 
+mkdir -p $HOME/steam-patch
 config_path=$HOME/steam-patch/config.toml
 if [ -f "$config_path" ]; then
     echo "Backing up config.toml..."
