@@ -6,24 +6,21 @@ use crate::patch::PatchFile;
 use crate::server::SettingsRequest;
 use crate::steam::SteamClient;
 use crate::{utils, main};
-use std::fs::File;
+use std::fs::File as FFile;
 use std::path::Path;
 use std::{fs, env};
 use std::process::{Command, Stdio};
 use std::thread;
-use std::time::Duration;
+use std::time::Duration as DDuration;
 use std::io::{self, Write, Read};
 use std::io::BufRead;
 use std::collections::HashMap;
-
+use tokio::fs::File;
+use tokio::io::AsyncReadExt;
+use tokio::time::{timeout, Duration};
 
 pub struct DeviceGo {
     device: DeviceGeneric,
-}
-#[derive(Debug)]
-struct ByteData {
-    index: usize,
-    value: String,
 }
 
 impl DeviceGo {
@@ -84,7 +81,7 @@ impl Device for DeviceGo {
 
 fn read_from_hidraw(device_path: &str, buffer_size: usize) -> io::Result<Vec<u8>> {
     let path = Path::new(device_path);
-    let mut device = File::open(path)?;
+    let mut device = FFile::open(path)?;
 
     let mut buffer = vec![0u8; buffer_size];
     let bytes_read = device.read(&mut buffer)?;
@@ -93,43 +90,49 @@ fn read_from_hidraw(device_path: &str, buffer_size: usize) -> io::Result<Vec<u8>
 
     Ok(buffer)
 }
-// Function to find an active hidraw device
-fn find_active_hidraw_device(device1: &str, device2: &str) -> io::Result<Option<String>> {
-    let mut buffer = [0; 1024]; // Buffer to read data into
+
+pub async fn find_active_hidraw_device(device1: &str, device2: &str) -> io::Result<Option<String>> {
+    let mut buffer = vec![0; 1024]; // Buffer to read data into
 
     for device_path in [device1, device2].iter() {
-        if let Ok(mut file) = File::open(device_path) {
-            if let Ok(size) = file.read(&mut buffer) {
-                if size > 63 {
-                    println!("Using {:?}", device_path);
+        if let Ok(mut file) = File::open(device_path).await {
+            // Set a timeout for the file.read operation
+            let timeout_duration = Duration::from_secs(1); 
+            let read_result = timeout(timeout_duration, file.read(&mut buffer)).await;
+            println!("Now looking at device {:?}", device_path);
+            match read_result {
+                Ok(Ok(size)) if size > 63 => {
+                    println!("Success at using {:?}", device_path);
                     return Ok(Some((*device_path).to_string()));
-                }
+                },
+                Ok(Ok(_)) | Ok(Err(_)) | Err(_) => {
+                    // Handle the case where read operation is less than 64 bytes, errors, or timeout occurs
+                    println!("Skipping {:?}", device_path);
+                },
             }
         }
     }
-    
+
     Ok(None)
 }
-
 pub fn start_mapper(mut steam: SteamClient) -> Option<tokio::task::JoinHandle<()>> {
     let conf = get_global_config();
     let buffer_size = 1024;
-    let mut previous_data = Vec::new(); // Variable to keep track of prev states
-    println!("Steam mapper {}", conf.mapper);
+
     if conf.mapper {
         Some(tokio::spawn(async move {
-            let active_device = match find_active_hidraw_device("/dev/hidraw3", "/dev/hidraw2") {
+            let active_device = match find_active_hidraw_device("/dev/hidraw3", "/dev/hidraw2").await {
                 Ok(Some(path)) => path,
                 _ => {
                     eprintln!("No active HIDRAW device found, retrying in 2 seconds");
-                    thread::sleep(Duration::from_secs(2));
+                    tokio::time::sleep(Duration::from_secs(2)).await; // Asynchronous sleep
                     tokio::spawn(async move {
                         start_mapper(steam)
                     });
                     return;
                 }
             };
-
+            let mut previous_data = Vec::new(); // Variable to keep track of prev states
             loop {
                 match read_from_hidraw(&active_device, buffer_size) {
                     Ok(data) => {
@@ -157,13 +160,13 @@ pub fn start_mapper(mut steam: SteamClient) -> Option<tokio::task::JoinHandle<()
                             println!("Device path {:?}", &active_device);
                             // println!("Device data received: {:?}", data);
                         }
-                            //                             //Update prev state
+                        //Update prev state
                         previous_data = data.clone();
                     },
                     Err(e) => {
                         eprintln!("Failed to read from device: {}", e);                       
-                        print!("Error reading event stream, retrying in 3 second");
-                        thread::sleep(Duration::from_secs(2));
+                        println!("Error reading event stream, retrying in 3 second");
+                        thread::sleep(DDuration::from_secs(2));
                         tokio::spawn(async move {
                             start_mapper(steam)
                         });
@@ -171,6 +174,7 @@ pub fn start_mapper(mut steam: SteamClient) -> Option<tokio::task::JoinHandle<()
                     },
                 }
             }
+
         }))
     } else {
         println!("Mapper disabled");
