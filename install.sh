@@ -63,10 +63,10 @@ if [ -f "$config_path" ]; then
 fi
 cp ${TEMP_FOLDER}/config.toml $HOME/steam-patch/config.toml
 
-DEVICENAME=$(cat /sys/devices/virtual/dmi/id/product_name)
-if [[ "${DEVICENAME}" == "ROG Ally RC71L_RC71L" ]]; then
-    sed -i "s/auto_nkey_recovery = false/auto_nkey_recovery = true/" $HOME/steam-patch/config.toml
-fi
+# DEVICENAME=$(cat /sys/devices/virtual/dmi/id/product_name)
+# if [[ "${DEVICENAME}" == "ROG Ally RC71L_RC71L" ]]; then
+#     sed -i "s/auto_nkey_recovery = false/auto_nkey_recovery = true/" $HOME/steam-patch/config.toml
+# fi
 
 # Run service
 sudo systemctl daemon-reload
