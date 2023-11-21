@@ -9,8 +9,8 @@ User=root
 Nice=-15
 IOSchedulingClass=best-effort
 IOSchedulingPriority=0
-ExecStartPre=touch "/home/$USER/.steam/steam/.cef-enable-remote-debugging"
-ExecStart=/usr/bin/steam-patch --user=$USER
+#ExecStartPre=touch "/home/$(id -nu 1000)/.steam/steam/.cef-enable-remote-debugging"
+ExecStart=/usr/bin/steam-patch --user=$(id -nu 1000)
 
 [Install]
 WantedBy=multi-user.target
