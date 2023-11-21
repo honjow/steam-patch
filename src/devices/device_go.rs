@@ -91,10 +91,10 @@ fn read_from_hidraw(device_path: &str, buffer_size: usize) -> io::Result<Vec<u8>
     Ok(buffer)
 }
 
-pub async fn find_active_hidraw_device(device1: &str, device2: &str) -> io::Result<Option<String>> {
+pub async fn find_active_hidraw_device(device1: &str, device2: &str, device3: &str) -> io::Result<Option<String>> {
     let mut buffer = vec![0; 1024]; // Buffer to read data into
 
-    for device_path in [device1, device2].iter() {
+    for device_path in [device1, device2, device3].iter() {
         if let Ok(mut file) = File::open(device_path).await {
             // Set a timeout for the file.read operation
             let timeout_duration = Duration::from_secs(1); 
@@ -121,7 +121,7 @@ pub fn start_mapper(mut steam: SteamClient) -> Option<tokio::task::JoinHandle<()
 
     if conf.mapper {
         Some(tokio::spawn(async move {
-            let active_device = match find_active_hidraw_device("/dev/hidraw3", "/dev/hidraw2").await {
+            let active_device = match find_active_hidraw_device("/dev/hidraw3", "/dev/hidraw2", "/dev/hidraw1").await {
                 Ok(Some(path)) => path,
                 _ => {
                     eprintln!("No active HIDRAW device found, retrying in 2 seconds");
