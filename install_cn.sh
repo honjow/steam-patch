@@ -44,7 +44,7 @@ sudo systemctl disable steam-patch 2> /dev/null
 
 printf "Installing version %s...\n" "${VERSION}"
 curl -L "${github_prefix}${DOWNLOAD_URL}" --output ${TEMP_FOLDER}/steam-patch
-curl -L "${github_prefix}${SERVICES_URL}" --output ${TEMP_FOLDER}/steam-patch-pro.service
+curl -L "${github_prefix}${SERVICES_URL}" --output ${TEMP_FOLDER}/steam-patch.service
 curl -L "${github_prefix}${SERVICES_BOOT_URL}" --output ${TEMP_FOLDER}/restart-steam-patch-on-boot.service
 curl -L "${github_prefix}${CONFIG_URL}" --output ${TEMP_FOLDER}/config.toml
 curl -L "${github_prefix}${POLKIT_URL}" --output ${TEMP_FOLDER}/steamos-priv-write-updated
