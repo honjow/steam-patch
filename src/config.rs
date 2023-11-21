@@ -73,7 +73,7 @@ fn read_config() -> Result<Config, Box<dyn std::error::Error>> {
     //Read the file into a string
     let username = get_username();
     println!("Grabbed config user: {}", username);
-    let config_path = PathBuf::from(format!("/home/{}/steam-patch/config.toml", username));
+    let config_path = PathBuf::from("/etc/steam-patch/config.toml");
     println!("Current path {:?}", config_path);
     let contents = fs::read_to_string(config_path)?;
     //Parse string of data into config
