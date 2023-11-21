@@ -4,7 +4,7 @@ After=multi-user.target
 
 [Service]
 Type=oneshot
-ExecStart=/bin/systemctl restart steam-patch.service
+ExecStart=/bin/systemctl restart steam-patch-pro.service
 RemainAfterExit=yes
 
 [Install]
