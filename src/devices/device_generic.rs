@@ -1,8 +1,9 @@
 use super::Device;
 use crate::devices::Patch;
-use crate::patch::PatchFile;
+use crate::patch::{PatchFile, self};
 use crate::server::SettingsRequest;
 use crate::utils;
+use crate::config::{get_global_config, self};
 
 pub struct DeviceGeneric {
     max_tdp: i8,
@@ -62,45 +63,88 @@ impl Device for DeviceGeneric {
     }
 
     fn get_patches(&self) -> Vec<Patch> {
-        vec![
-            Patch { //Updated NOV16
+        let conf: config::Config = get_global_config();
+
+        let mut patches = vec![
+            Patch { //Sets max TDP
                 text_to_find: "return[o,t,n,e=>a((()=>p.Get().SetTDPLimit(e)))".to_string(),
                 replacement_text: format!("return[o,t,{:?},e=>a((()=>p.Get().SetTDPLimit(e)))", self.max_tdp).to_string(),
                 destination: PatchFile::Chunk,
             },
-            //Max GPU = 2700
+            //Max GPU = 2700 //Self explanatory
             Patch { //Updated NOV16
                 text_to_find: "return[o,t,n,e=>a((()=>p.Get().SetGPUPerformanceManualMhz(e)))".to_string(),
                 replacement_text: format!("return[o,t,{:?},e=>a((()=>p.Get().SetGPUPerformanceManualMhz(e)))", self.max_gpu).to_string(),
                 destination: PatchFile::Chunk,
             },
-            // Listen to per app changes
+            // Listen to per app changes, required for QAM menu changes. 
             Patch {
                 text_to_find: "const t=c.Hm.deserializeBinary(e).toObject();Object.keys(t)".to_string(),
                 replacement_text: "const t=c.Hm.deserializeBinary(e).toObject(); console.log(t); fetch(`http://localhost:1338/update_settings`, { method: 'POST',  headers: {'Content-Type': 'application/json'}, body: JSON.stringify(t.settings)}); Object.keys(t)".to_string(),
                 destination: PatchFile::Chunk,
             }, 
-            Patch {
-                text_to_find: "l.k_EControllerTypeFlags_XBox360".to_string(),
-                replacement_text: "l.k_EControllerTypeFlags_SteamControllerNeptune".to_string(),
-                destination: PatchFile::Chunk,
-            }, 
-            
-            // Replace Xbox menu button with Steam one CAUSING CRASH
-            // Raw literal strings with escape for REGEX
-            Patch { //NOV16
-                text_to_find: r#"e="/steaminputglyphs/xbox_button_logo.svg""#.to_string(),
-                replacement_text: r#"return l.createElement(A.ActionGlyph, { button: n, size: A.EActionGlyphSize.Medium})"#.to_string(),
-                destination: PatchFile::Chunk,
-            },
-
-            // Change resolution to Native (if Default) after installation
+            // Patch {
+            //     text_to_find: "l.k_EControllerTypeFlags_XBox360".to_string(),
+            //     replacement_text: "l.k_EControllerTypeFlags_SteamControllerNeptune".to_string(),
+            //     destination: PatchFile::Chunk,
+            // }, 
+            //Overrides resolution for installed games so they are native resolution, must be installed with steam-patch patched in order for this change to go into effect.s
             Patch { //Nov 16
                 text_to_find: "DownloadComplete_Title\"),r=Ue(n,t.data.appid());const s=(0,x.Q2)();".to_string(),
                 replacement_text: "DownloadComplete_Title\"),r=Ue(n,t.data.appid()); SteamClient.Apps.GetResolutionOverrideForApp(t.data.appid()).then(res => res === \"Default\" && SteamClient.Apps.SetAppResolutionOverride(t.data.appid(), \"Native\")); const s=(0,x.Q2)();".to_string(),
                 destination: PatchFile::Chunk, 
             },
-        ]
+
+        ];
+        //Spoofing glyphs to match device
+        if conf.spoof_glyphs {
+            patches.extend(vec![
+            // Replace Xbox menu button with Steam menu button
+            Patch { //NOV16
+                text_to_find: r#"e="/steaminputglyphs/xbox_button_logo.svg""#.to_string(),
+                replacement_text: r#"return l.createElement(A.ActionGlyph, { button: n, size: A.EActionGlyphSize.Medium})"#.to_string(),
+                destination: PatchFile::Chunk,
+            },
+            // Replace PS menu button and ABXY 
+            Patch { //NOV16
+                text_to_find: r#"e="/steaminputglyphs/ps4_button_logo.svg""#.to_string(),
+                replacement_text: r#"return l.createElement(A.ActionGlyph, { button: n, size: A.EActionGlyphSize.Medium})"#.to_string(),
+                destination: PatchFile::Chunk,
+            },
+            // Replace button X -> A
+            Patch { //NOV16
+                text_to_find: r#""/steaminputglyphs/ps_color_button_x.svg""#.to_string(),
+                replacement_text: r#""/steaminputglyphs/shared_button_a.svg""#.to_string(),
+                destination: PatchFile::Chunk,
+            },
+            // Replace button Squeare -> X
+            Patch { //NOV16
+                text_to_find: r#""/steaminputglyphs/ps_color_button_square.svg""#.to_string(),
+                replacement_text: r#""/steaminputglyphs/shared_button_x.svg""#.to_string(),
+                destination: PatchFile::Chunk,
+            },
+            // Replace button Triagnle -> Y
+            Patch { //NOV16
+                text_to_find: r#""/steaminputglyphs/ps_color_button_triangle.svg""#.to_string(),
+                replacement_text: r#""/steaminputglyphs/shared_button_y.svg""#.to_string(),
+                destination: PatchFile::Chunk,
+            },
+            // Replace button Circle -> B
+            Patch { 
+                text_to_find: r#""/steaminputglyphs/ps_color_button_circle.svg""#.to_string(),
+                replacement_text: r#""/steaminputglyphs/shared_button_b.svg""#.to_string(),
+                destination: PatchFile::Chunk,
+            },
+            // Replace option menu to sd
+            Patch { 
+                text_to_find: r#""/steaminputglyphs/ps4_button_options.svg""#.to_string(),
+                replacement_text: r#""/steaminputglyphs/sd_button_menu.svg""#.to_string(),
+                destination: PatchFile::Chunk,
+            }
+            ]);
+        }
+        //Return patches
+        patches
     }
 
     fn get_key_mapper(&self) -> Option<tokio::task::JoinHandle<()>> {
