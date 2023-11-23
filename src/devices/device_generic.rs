@@ -143,6 +143,53 @@ impl Device for DeviceGeneric {
             }
             ]);
         }
+
+
+        if conf.nintendo_glyphs {
+            patches.extend(vec![
+                Patch { //NOV16
+                    text_to_find: r#"e="/steaminputglyphs/xbox_button_logo.svg""#.to_string(),
+                    replacement_text: r#"return l.createElement(A.ActionGlyph, { button: n, size: A.EActionGlyphSize.Medium})"#.to_string(),
+                    destination: PatchFile::Chunk,
+                },
+                // Replace PS menu button and ABXY 
+                Patch { //NOV16
+                    text_to_find: r#"e="/steaminputglyphs/ps4_button_logo.svg""#.to_string(),
+                    replacement_text: r#"return l.createElement(A.ActionGlyph, { button: n, size: A.EActionGlyphSize.Medium})"#.to_string(),
+                    destination: PatchFile::Chunk,
+                },
+                 // Replace button A -> B
+                Patch { //NOV16
+                    text_to_find: r#""/steaminputglyphs/shared_color_button_a.svg""#.to_string(),
+                    replacement_text: r#""/steaminputglyphs/shared_button_b.svg""#.to_string(),
+                    destination: PatchFile::Chunk,
+                },
+                // Replace button Squeare -> X
+                Patch { //NOV16
+                    text_to_find: r#""/steaminputglyphs/shared_color_button_b.svg""#.to_string(),
+                    replacement_text: r#""/steaminputglyphs/shared_color_button_a.svg""#.to_string(),
+                    destination: PatchFile::Chunk,
+                },
+                // Replace button Triagnle -> Y
+                Patch { //NOV16
+                    text_to_find: r#""/steaminputglyphs/shared_color_button_y.svg""#.to_string(),
+                    replacement_text: r#""/steaminputglyphs/shared_button_x.svg""#.to_string(),
+                    destination: PatchFile::Chunk,
+                },
+                // Replace button Squeare -> X
+                Patch { //NOV16
+                    text_to_find: r#""/steaminputglyphs/shared_color_button_x.svg""#.to_string(),
+                    replacement_text: r#""/steaminputglyphs/shared_color_button_y.svg""#.to_string(),
+                    destination: PatchFile::Chunk,
+                },
+                // Replace option menu to sd
+                Patch { 
+                    text_to_find: r#""/steaminputglyphs/ps4_button_options.svg""#.to_string(),
+                    replacement_text: r#""/steaminputglyphs/sd_button_menu.svg""#.to_string(),
+                    destination: PatchFile::Chunk,
+                }
+            ]);
+        }
         //Return patches
         patches
     }

@@ -24,6 +24,8 @@ pub struct Config {
     pub auto_nkey_recovery: bool,
     #[serde(default = "default_spoof_glyphs")]
     pub spoof_glyphs: bool,
+    #[serde(default = "default_nintendo_glyphs")]
+    pub nintendo_glyphs: bool,
 }
 
 // Default functions for each field
@@ -36,6 +38,7 @@ fn default_mapper() -> bool { true }
 fn default_legacy_tdp() -> bool { true }
 fn default_auto_nkey_recovery() -> bool { false }
 fn default_spoof_glyphs() -> bool { true }
+fn default_nintendo_glyphs() -> bool { false }
 
 
 
@@ -67,6 +70,7 @@ pub fn initialize_config() -> Config {
                 legacy_tdp: true,
                 auto_nkey_recovery: false,
                 spoof_glyphs: true,
+                nintendo_glyphs: false
             };
             *global_config = Some(default_config.clone());
             default_config
