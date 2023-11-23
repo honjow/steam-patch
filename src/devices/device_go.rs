@@ -195,7 +195,8 @@ pub fn start_mapper(mut steam: SteamClient) -> Option<tokio::task::JoinHandle<()
                                             .await;
                             }
                             if(data[18] == 128 && data[19] == 32) {
-                                println!("Show keyboard")
+                                println!("Show keyboard");
+                                steam.execute("SteamClient.URL.ExecuteSteamURL('steam://open/keyboard')").await;
                             }
                         } else if data.len() < 64 {
                             println!("Device data length {:?}", data.len());
