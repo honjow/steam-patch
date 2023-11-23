@@ -189,15 +189,18 @@ pub fn start_mapper(mut steam: SteamClient) -> Option<tokio::task::JoinHandle<()
                                             .await;
                             }
                             if(data[18] == 128){
-                                println!("Show Menu");
-                                        steam
-                                            .execute("GamepadNavTree.m_Controller.OnButtonActionInternal(true, 27, 2); console.log(\"Show Menu\");")
-                                            .await;
+                                if data[19] == 32 {
+                                    println!("Show keyboard");
+                                    steam.execute("SteamClient.URL.ExecuteSteamURL('steam://open/keyboard')").await;
+                                } else {
+                                    println!("Show Menu");
+                                    steam.execute("GamepadNavTree.m_Controller.OnButtonActionInternal(true, 27, 2); console.log(\"Show Menu\");").await;
+                                }
                             }
-                            if(data[18] == 128 && data[19] == 32) {
-                                println!("Show keyboard");
-                                steam.execute("SteamClient.URL.ExecuteSteamURL('steam://open/keyboard')").await;
-                            }
+                            // if(data[18] == 128 && data[19] == 32) {
+                            //     println!("Show keyboard");
+                            //     steam.execute("SteamClient.URL.ExecuteSteamURL('steam://open/keyboard')").await;
+                            // }
                         } else if data.len() < 64 {
                             println!("Device data length {:?}", data.len());
                             println!("Device path {:?}", &active_device);
