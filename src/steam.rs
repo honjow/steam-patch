@@ -36,7 +36,7 @@ impl SteamClient {
 
         for patch in &patches {
             // Use `match` or `if let` to handle the Option returned by `get_file()`
-            println!("Applying patch: {:?}", patch);
+            println!("Applying patch: Curr->{:?}", patch.text_to_find);
             if let Ok(Some(path_file)) = patch.destination.get_file() {
                 // Convert the `Path` to a string and handle the potential `None` case
                 if let Some(path_str) = path_file.to_str() {
@@ -61,10 +61,10 @@ impl SteamClient {
                     let text_to_find = &patch.text_to_find;
                     let replacement_text = &patch.replacement_text;
                     if content.contains(text_to_find) {
-                        // println!("Found text to replace in {}: '{}'", path_string, text_to_find);
+                        println!("Success: New->{}", replacement_text);
                         *content = content.replace(text_to_find, replacement_text);
                     } else {
-                        println!("Text not found in {}: '{}'", path_string, text_to_find);
+                        println!("Failed to patch: '{}'", replacement_text);
                     }
                 } else {
                     // Handle the error if path_str is None
@@ -94,7 +94,7 @@ impl SteamClient {
        
         for patch in &patches {
             // Use `match` or `if let` to handle the Option returned by `get_file()`
-            println!("Removing patch: {:?}", patch);
+            println!("Removing patch: {:?}", patch.replacement_text);
             if let Ok(Some(path_file)) = patch.destination.get_file() {
                 // Convert the `Path` to a string and handle the potential `None` case
                 if let Some(path_str) = path_file.to_str() {
@@ -119,10 +119,10 @@ impl SteamClient {
                     let text_to_find = &patch.text_to_find;
                     let replacement_text = &patch.replacement_text;
                     if content.contains(replacement_text) {
-                        // println!("Found text to replace in {}: '{}'", path_string, text_to_find);
+                        println!("Success: New->{}", text_to_find);
                         *content = content.replace(replacement_text, text_to_find);
                     } else {
-                        // println!("Text not found in {}: '{}'", path_string, text_to_find);
+                        println!("Failed to unpatch: '{}'", replacement_text);
                     }
                 } else {
                     // Handle the error if path_str is None
