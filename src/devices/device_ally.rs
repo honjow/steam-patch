@@ -152,8 +152,14 @@ pub fn recover_nkey() -> io::Result<()> {
     // Check if a specific USB device is not present
     println!("ROG Ally detected and USB device 0b05:1abe not present");
     
-    let command = format!("echo '\\_SB.PCI0.SBRG.EC0.CSEE' \"0xB8\" > /proc/acpi/call");
-    match utils::run_command(&[&command]) {
+    let command1 = format!("echo '\\_SB.PCI0.SBRG.EC0.CSEE' \"0xB7\" > /proc/acpi/call");
+    let command2 = format!("echo '\\_SB.PCI0.SBRG.EC0.CSEE' \"0xB8\" > /proc/acpi/call");
+    match utils::run_command(&[&command1]) {
+        Ok(_) => println!("Set TDP successfully!"),
+        Err(e) => println!("Couldn't set TDP: {}", e),
+    }
+    thread::sleep(Duration::from_secs(1));
+    match utils::run_command(&[&command2]) {
         Ok(_) => println!("Set TDP successfully!"),
         Err(e) => println!("Couldn't set TDP: {}", e),
     }
