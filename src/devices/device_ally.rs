@@ -155,13 +155,13 @@ pub fn recover_nkey() -> io::Result<()> {
     let command1 = format!("echo '\\_SB.PCI0.SBRG.EC0.CSEE' \"0xB7\" > /proc/acpi/call");
     let command2 = format!("echo '\\_SB.PCI0.SBRG.EC0.CSEE' \"0xB8\" > /proc/acpi/call");
     match utils::run_command(&[&command1]) {
-        Ok(_) => println!("Set TDP successfully!"),
-        Err(e) => println!("Couldn't set TDP: {}", e),
+        Ok(_) => println!("Set 0xB7"),
+        Err(e) => println!("Couldn't set 0xB7 {}", e),
     }
     thread::sleep(Duration::from_secs(1));
     match utils::run_command(&[&command2]) {
-        Ok(_) => println!("Set TDP successfully!"),
-        Err(e) => println!("Couldn't set TDP: {}", e),
+        Ok(_) => println!("Set 0xB8"),
+        Err(e) => println!("Couldn't set 0xB8 {}", e),
     }
     Ok(())
 }
