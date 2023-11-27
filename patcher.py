@@ -7,11 +7,11 @@ DEBUG_URL = "http://localhost:8080/json"
 
 # Tabs to look for
 TABS_TO_FIND = [
-    "MainMenu_uid7",
-    "QuickAccess_uid7",
-    "data:text/html,<body></body>",
-    "notificationtoasts_uid7",
-    "Steam Big Picture Mode",
+    # "MainMenu_uid7",
+    # "QuickAccess_uid7",
+    # "data:text/html,<body></body>",
+    # "notificationtoasts_uid7",
+    # "Steam Big Picture Mode",
     "SharedJSContext"
 ]
 
@@ -32,13 +32,13 @@ def main():
     print("Waiting for CEF tabs to become available...")
     while True:
         if find_tabs():
-            print("Required tabs found, proceeding with next steps...")
+            print("Required tabs found, Patching!!!!")
             # Insert your code to perform actions when tabs are found
             # break
             time.sleep(0.1)
-
+    
         else:
-            print("Tabs not found, rechecking in 5 seconds...")
+            print("Tabs not found, Unpatching...")
             time.sleep(0.1)
 
 if __name__ == '__main__':

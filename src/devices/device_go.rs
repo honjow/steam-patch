@@ -92,9 +92,6 @@ fn read_from_hidraw(device_path: &str, buffer_size: usize) -> io::Result<Vec<u8>
 }
 
 pub async fn find_active_hidraw_device() -> io::Result<Option<String>> {
-    //let active_device = match find_active_hidraw_device("/dev/hidraw3", "/dev/hidraw2", "/dev/hidraw1").await {
-    //Search under /sys/class/hidraw/hidraw*/device/uevent matches 
-    // let mut buffer: Vec<u8> = vec![0; 1024]; // Buffer to read data into
     let hidraw_base_path = "/sys/class/hidraw";
     let mut matching_devices = Vec::new();
 
