@@ -12,7 +12,7 @@ use std::process::Command;
 use std::thread;
 use std::time::Duration;
 use std::io::{self, Write};
-
+use dbus::blocking::Connection;
 
 pub struct DeviceAlly {
     device: DeviceGeneric,
@@ -24,33 +24,41 @@ impl DeviceAlly {
 }
 }
 
+// Define the Platform trait for DBus interaction
+#[dbus_proxy(
+    interface = "org.asuslinux.Daemon",
+    default_service = "org.asuslinux.Daemon",
+    default_path = "/org/asuslinux/Platform"
+)]
+trait Platform {
+    fn set_ppt_pl1_spl(&self, value: u8) -> zbus::Result<()>;
+    fn set_ppt_pl2_sppt(&self, value: u8) -> zbus::Result<()>;
+    fn set_ppt_fppt(&self, value: u8) -> zbus::Result<()>;
+}
+
 impl Device for DeviceAlly {
     fn set_thermalpolicy(&self, thermal_policy: i32) {
-        println!("Setting new thermal policy: {}", thermal_policy);
-        
-        let file_path = "/sys/devices/platform/asus-nb-wmi/throttle_thermal_policy";
-    
-        // Attempt to write the thermal policy to the file.
-        match fs::write(file_path, thermal_policy.to_string()) {
-            Ok(_) => {
-                // Optionally, add a small delay to give the system time to apply the setting.
-                thread::sleep(Duration::from_millis(50));
-    
-                // Read the file back to confirm.
-                match fs::read_to_string(file_path) {
-                    Ok(content) if content.trim() == thermal_policy.to_string() => {
-                        println!("Thermal policy set successfully.");
-                    },
-                    _ => {
-                        eprintln!("Failed to set thermal policy. Value could not be confirmed.");
-                    }
-                }
-            },
+        let conn = match Connection::new_system() {
+            Ok(c) => c,
             Err(e) => {
-                // Handle the error, but don't propagate it.
-                eprintln!("Failed to write thermal policy: {}", e);
+                eprintln!("Failed to connect to DBus: {}", e);
+                return;
             }
         };
+
+        let platform_proxy = match PlatformProxy::new(&conn) {
+            Ok(proxy) => proxy,
+            Err(e) => {
+                eprintln!("Failed to create DBus proxy: {}", e);
+                return;
+            }
+        };
+
+        match platform_proxy.set_throttle_thermal_policy(thermal_policy) {
+            Ok(_) => println!("Thermal policy set successfully."),
+            Err(e) => eprintln!("Failed to set thermal policy: {}", e),
+        }
+
     }
 
     fn update_settings(&self, request: SettingsRequest) {
@@ -82,35 +90,38 @@ impl Device for DeviceAlly {
     }
 
     fn set_tdp(&self, tdp: i8) {
-        // Update thermal policy
-        let thermal_policy = match tdp {
-            val if val < 12 => 2,                 // silent
-            val if (12..=25).contains(&val) => 0, // performance
-            _ => 1,                               // turbo
+        let conn = match Connection::new_system() {
+            Ok(c) => c,
+            Err(e) => {
+                eprintln!("Failed to connect to DBus: {}", e);
+                return;
+            }
         };
-        // self.set_thermalpolicy(thermal_policy); 
+        let platform_proxy = match PlatformProxy::new(&conn) {
+            Ok(proxy) => proxy,
+            Err(e) => {
+                eprintln!("Failed to create DBus proxy: {}", e);
+                return;
+            }
+        };
 
         let conf = get_global_config();
         if conf.legacy_tdp {
             self.device.set_tdp(tdp);
-        } else { //Asus ROG ally 6.5+ kernel
-            let target_tdp = tdp as i32;
+        } else { 
+            let target_tdp = tdp as u8;
             let boost_tdp = target_tdp + 2;
-            let command_target = &format!("echo {} | sudo tee /sys/devices/platform/asus-nb-wmi/ppt_pl1_spl", target_tdp);
-            let command_boost = &format!("echo {} | sudo tee /sys/devices/platform/asus-nb-wmi/ppt_pl2_sppt", boost_tdp);
-            let command_slow = &format!("echo {} | sudo tee /sys/devices/platform/asus-nb-wmi/ppt_fppt", target_tdp);
-            println!("Using asus TDP method");
-            let commands = vec![
-                vec!["bash", "-c", command_target],
-                vec!["bash", "-c", command_boost],
-                vec!["bash", "-c", command_slow],
-            ];
-            for cmd in commands {
-                println!("Command to run: {:?}",cmd);
-                match utils::run_command(&cmd) {
-                    Ok(_) => println!("Set TDP successfully!"),
-                    Err(e) => println!("Couldn't set TDP: {}", e),
-                }
+
+            if let Err(e) = platform_proxy.set_ppt_pl1_spl(target_tdp) {
+                eprintln!("Failed to set ppt_pl1_spl: {}", e);
+            }
+
+            if let Err(e) = platform_proxy.set_ppt_pl2_sppt(boost_tdp) {
+                eprintln!("Failed to set ppt_pl2_sppt: {}", e);
+            }
+
+            if let Err(e) = platform_proxy.set_ppt_fppt(target_tdp) {
+                eprintln!("Failed to set ppt_fppt: {}", e);
             }
             
         }
