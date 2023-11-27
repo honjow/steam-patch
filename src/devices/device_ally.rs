@@ -13,6 +13,7 @@ use std::thread;
 use std::time::Duration;
 use std::io::{self, Write};
 use dbus::blocking::Connection;
+use dbus::blocking::stdintf::org_freedesktop_dbus::Properties;
 
 pub struct DeviceAlly {
     device: DeviceGeneric,
@@ -25,40 +26,53 @@ impl DeviceAlly {
 }
 
 // Define the Platform trait for DBus interaction
-#[dbus_proxy(
-    interface = "org.asuslinux.Daemon",
-    default_service = "org.asuslinux.Daemon",
-    default_path = "/org/asuslinux/Platform"
-)]
 trait Platform {
-    fn set_ppt_pl1_spl(&self, value: u8) -> zbus::Result<()>;
-    fn set_ppt_pl2_sppt(&self, value: u8) -> zbus::Result<()>;
-    fn set_ppt_fppt(&self, value: u8) -> zbus::Result<()>;
+    fn set_ppt_pl1_spl(&self, value: u8) -> Result<(), dbus::Error>;
+    fn set_ppt_pl2_sppt(&self, value: u8) -> Result<(), dbus::Error>;
+    fn set_ppt_fppt(&self, value: u8) -> Result<(), dbus::Error>;
 }
+impl Platform for dbus::blocking::Proxy<'_, &Connection> {
+    fn set_ppt_pl1_spl(&self, value: u8) -> Result<(), dbus::Error> {
+        self.method_call("org.asuslinux.Daemon", "ppt_pl1_spl", (value,))
+            .and_then(|response: ()| Ok(response))
+    }
+    // Update this based on return values from dbus interface
+    
+    fn set_ppt_pl2_sppt(&self, value: u8) -> Result<(), dbus::Error> {
+        self.method_call("org.asuslinux.Daemon", "SetPptPl2Sppt", (value,))
+            .and_then(|response: ()| Ok(response))
+    }
+
+    fn set_ppt_fppt(&self, value: u8) -> Result<(), dbus::Error> {
+        self.method_call("org.asuslinux.Daemon", "SetPptFppt", (value,))
+            .and_then(|response: ()| Ok(response))
+    }
+}
+
+
 
 impl Device for DeviceAlly {
     fn set_thermalpolicy(&self, thermal_policy: i32) {
-        let conn = match Connection::new_system() {
-            Ok(c) => c,
-            Err(e) => {
-                eprintln!("Failed to connect to DBus: {}", e);
-                return;
-            }
-        };
-
-        let platform_proxy = match PlatformProxy::new(&conn) {
-            Ok(proxy) => proxy,
-            Err(e) => {
-                eprintln!("Failed to create DBus proxy: {}", e);
-                return;
-            }
-        };
-
-        match platform_proxy.set_throttle_thermal_policy(thermal_policy) {
-            Ok(_) => println!("Thermal policy set successfully."),
-            Err(e) => eprintln!("Failed to set thermal policy: {}", e),
-        }
-
+        // let conn = match Connection::new_system() {
+        //     Ok(c) => c,
+        //     Err(e) => {
+        //         eprintln!("Failed to connect to DBus: {}", e);
+        //         return;
+        //     }
+        // };
+        // let proxy = conn.with_proxy(
+        //     "org.asuslinux.Daemon", 
+        //     "/org/asuslinux/Platform", 
+        //     Duration::from_millis(5000),
+        // );
+        // match proxy.method_call(
+        //     "org.asuslinux.Daemon", 
+        //     "set_throttle_thermal_policy", 
+        //     (thermal_policy,)
+        // ) {
+        //     Ok(_) => println!("Thermal policy set successfully."),
+        //     Err(e) => eprintln!("Failed to set thermal policy: {}", e),
+        // }
     }
 
     fn update_settings(&self, request: SettingsRequest) {
@@ -90,20 +104,9 @@ impl Device for DeviceAlly {
     }
 
     fn set_tdp(&self, tdp: i8) {
-        let conn = match Connection::new_system() {
-            Ok(c) => c,
-            Err(e) => {
-                eprintln!("Failed to connect to DBus: {}", e);
-                return;
-            }
-        };
-        let platform_proxy = match PlatformProxy::new(&conn) {
-            Ok(proxy) => proxy,
-            Err(e) => {
-                eprintln!("Failed to create DBus proxy: {}", e);
-                return;
-            }
-        };
+        let conn = Connection::new_system().unwrap();
+        let proxy = conn.with_proxy("org.asuslinux.Daemon", "/org/asuslinux/Platform", Duration::from_millis(5000));
+
 
         let conf = get_global_config();
         if conf.legacy_tdp {
@@ -112,15 +115,15 @@ impl Device for DeviceAlly {
             let target_tdp = tdp as u8;
             let boost_tdp = target_tdp + 2;
 
-            if let Err(e) = platform_proxy.set_ppt_pl1_spl(target_tdp) {
+            if let Err(e) = proxy.set_ppt_pl1_spl(target_tdp) {
                 eprintln!("Failed to set ppt_pl1_spl: {}", e);
             }
-
-            if let Err(e) = platform_proxy.set_ppt_pl2_sppt(boost_tdp) {
+    
+            if let Err(e) = proxy.set_ppt_pl2_sppt(boost_tdp) {
                 eprintln!("Failed to set ppt_pl2_sppt: {}", e);
             }
-
-            if let Err(e) = platform_proxy.set_ppt_fppt(target_tdp) {
+    
+            if let Err(e) = proxy.set_ppt_fppt(target_tdp) {
                 eprintln!("Failed to set ppt_fppt: {}", e);
             }
             
