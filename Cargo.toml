@@ -17,7 +17,6 @@ hyper = { version = "0.14", features = ["full"] }
 inotify = "0.10.1"
 lazy_static = "1.4.0"
 toml = "0.5.8"
-dbus = "0.9"
 
 [profile.release]
 opt-level = "z"
