@@ -7,6 +7,7 @@ use dirs::home_dir;
 use hyper::{Client, Uri, body};
 use inotify::{Inotify, WatchMask};
 use serde::{Deserialize};
+use tungstenite::http::response;
 use std::collections::HashMap;
 use std::env;
 use std::f32::consts::E;
@@ -23,6 +24,9 @@ use tungstenite::{Message, WebSocket};
 use std::option::Option;
 use std::process::{Command, Stdio};
 use std::thread;
+use reqwest;
+use serde_json::Value;
+
 
 #[derive(Deserialize)]
 struct Tab {
@@ -322,6 +326,25 @@ impl SteamClient {
     
         Ok(())
     }
+    
+    const DEBUG_URL: &str = "http://localhost:8080/json";
+    const TABS_TO_FIND: &'static[&'static str] = &["SharedJSContext"];
+
+    async fn find_tabs() -> Result<bool, reqwest::Error> {
+        let response = reqwest::get(Self::DEBUG_URL).await?;
+
+        if response.status().is_success() {
+            let tabs: Vec<Value> = response.json().await?;
+            for tab in tabs {
+                if let Some(title) = tab["title"].as_str() {
+                    if Self::TABS_TO_FIND.contains(&title) {
+                        return Ok(true);
+                    }
+                }
+            }
+        }
+        Ok(false)
+    }
 
     pub async fn watch() -> Option<tokio::task::JoinHandle<()>> {
         // If Steam client is already running, patch it and restart
@@ -352,106 +375,51 @@ impl SteamClient {
             client.reboot().await;
         }
 
-        // Watch for changes in log
-        // let mut inotify = Inotify::init().expect("Failed to initialize inotify");
-        // Initialize inotify outside of the if-let to ensure it exists for the lifetime of the function
-        let mut inotify = match Inotify::init() {
-            Ok(inotify) => inotify,
-            Err(e) => {
-                eprintln!("Failed to initialize inotify: {:?}", e);
-                return None;
-            }
-        };
 
-        // Get the log path using the existing function
-        let log_path = match Self::get_log_path() {
-            Some(path) => path,
-            None => {
-                eprintln!("Log path could not be determined.");
-                return None;
-            }
-        };
-        // Add a watch to the log path
-        match inotify.watches().add(&log_path, WatchMask::MODIFY) {
-            Ok(_) => println!("Watching log path: {:?}", log_path),
-            Err(e) => {
-                eprintln!("Failed to add a watch to the log path: {:?}", e);
-                return None;
-            }
-        };
+        println!("Watching Steam cef status...");
+        let task = tokio::spawn(async move {
+            let mut patched = false;
 
-        println!("Watching Steam log...");
-        let task = tokio::task::spawn_blocking(move || {
-            
-            let python_script_path = "/home/aly/github/steam-patch/patcher.py";
-            thread::spawn(move || {
-                //Spawn python subp
-                let mut child = Command::new("python3")
-                    .arg(python_script_path)
-                    .stdout(Stdio::piped())
-                    .spawn()
-                    .expect("Failed to spawn Python process");
-                let stdout = BufReader::new(child.stdout.take().expect("Failed to open stdout"));
-
-            let mut process_flow = ProcessFlow::None;
-            enum ProcessFlow {
-                        None,
-                        UpdatePending(Instant),
-                        Updating,
-                        Updated,
-                        ShuttingDown,
-                    }
-            let mut start_time = Instant::now();
-            let client = Self::new(); // Create an instance of SteamClient
-
-            for line in stdout.lines() {
-                match line {
-                    Ok(line) => {
-                        // Process the output from the Python script
-                        if line == "Tabs found, Patching!!!!" {
-                            // Perform patching if not already patched
-                            if !Self::is_patched() {
-                                if let Some(device) = create_device() {
-                                    match client.patch(device.get_patches()) {
-                                        Ok(_) => {
-                                            println!("Steam patched");
-                                            let _ = Self::create_patched_file();
-                                        },
-                                        Err(_) => eprintln!("Couldn't patch Steam"),
-                                    }
+            loop {
+                match SteamClient::find_tabs().await {
+                    Ok(tabs_found) => {
+                        if tabs_found && !patched {
+                            println!("Required tabs found, patching...");
+                            if let Some(device) = create_device() {
+                                match client.patch(device.get_patches()) {
+                                    Ok(_) => {
+                                        println!("Steam was running and patched");
+                                        let _ = Self::create_patched_file();
+                                    },
+                                    Err(_) => eprintln!("Couldn't patch Steam"),
                                 }
                             }
-                        } else if line == "Tabs not found, Unpatching..." {
-                            // Perform unpatching if necessary
-                            if Self::is_patched() {
-                                if let Some(device) = create_device() {
-                                    match client.unpatch(device.get_patches()) {
-                                        Ok(_) => {
-                                            println!("Steam unpatched");
-                                            let _ = Self::remove_patched_file();
-                                        },
-                                        Err(_) => eprintln!("Couldn't unpatch Steam"),
-                                    }
+                            patched = true;
+                            println!(r#"{{"status": "patched"}}"#);
+                        } else if !tabs_found && patched {
+                            println!("Tabs not found, unpatching...");
+                            if let Some(device) = create_device() {
+                                match client.unpatch(device.get_patches()) {
+                                    Ok(_) => {
+                                        println!("Unpatching to remove previous patches and repatching.");
+                                        let _ = Self::remove_patched_file();
+                                    },
+                                    Err(_) => eprintln!("Couldn't unpatch Steam"),
                                 }
                             }
+                            patched = false;
+                            println!(r#"{{"status": "unpatched"}}"#);
                         }
-                    },
-                    Err(e) => {
-                        eprintln!("Error reading line: {}", e);
-                        break;
+                    }
+                    Err(_) => {
+                        println!("Server not available, rechecking in 1 seconds...");
+                        tokio::time::sleep(Duration::from_millis(300)).await;
+                        continue;
                     }
                 }
-
-                // Sleep for a short duration to prevent tight looping
-                std::thread::sleep(Duration::from_millis(500));
+        
+                tokio::time::sleep(Duration::from_millis(200)).await;
             }
-
-            // Optionally, wait for the child process to finish
-            let result = child.wait().expect("Failed to wait on child");
-            println!("Python script exited with: {}", result);
-                
-
-            })
         });  
         Some(task)   
     }
