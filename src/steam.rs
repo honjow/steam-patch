@@ -21,6 +21,8 @@ use tungstenite::connect;
 use tungstenite::stream::MaybeTlsStream;
 use tungstenite::{Message, WebSocket};
 use std::option::Option;
+use std::process::{Command, Stdio};
+use std::thread;
 
 #[derive(Deserialize)]
 struct Tab {
@@ -379,282 +381,79 @@ impl SteamClient {
         };
 
         println!("Watching Steam log...");
-        // let task = tokio::task::spawn_blocking(move || {
-        //     let mut buffer = [0u8; 4096];
-        //     // let mut process_flow = 0;
-        //     enum ProcessFlow {
-        //         None,
-        //         UpdatePending(Instant),
-        //         Updating,
-        //         Updated,
-        //         ShuttingDown,
-        //     }
-        //     let mut process_flow = ProcessFlow::None;
-        //     loop {
-        //         if let Ok(events) = inotify.read_events_blocking(&mut buffer) {
-        //             for _ in events {
-        //                 //Remove unwrap
-        //                 let log_path = match Self::get_log_path() {
-        //                     Some(path) => path,
-        //                     None => {
-        //                         println!("Log path not found.");
-        //                         continue;
-        //                     }
-        //                 };
-                        
-        //                 // let file = File::open(Self::get_log_path().unwrap()).unwrap();
-        //                 let file = match File::open(&log_path) {
-        //                     Ok(file) => file,
-        //                     Err(e) => {
-        //                         println!("Error opening file '{}': {}", log_path.display(), e);
-        //                         continue;
-        //                     }
-        //                 };
-        //                 let reader = BufReader::new(file);
-
-        //                 match reader.lines().last() {
-        //                     Some(Ok(line)) => {
-
-        //                         match &mut process_flow {
-        //                             ProcessFlow::None => {
-        //                                 if line.contains("Verifying installation...") {
-        //                                     println!("Verifying installation...");
-        //                                     process_flow = ProcessFlow::Updating;
-        //                                 }
-        //                             },
-        //                             ProcessFlow::Updating => {
-        //                                 if line.contains("Verification complete") {
-        //                                     println!("Verification complete - Checking for update");
-        //                                     process_flow = ProcessFlow::UpdatePending(Instant::now());
-        //                                 }
-        //                                 if line.contains("Download Complete") {
-        //                                     println!("Download complete");
-        //                                     process_flow = ProcessFlow::UpdatePending(Instant::now());
-        //                                 }
-        //                             },
-        //                             ProcessFlow::UpdatePending(start_time) => {
-        //                                 if line.contains("Downloading update") {
-        //                                     println!("Update is being downloaded");
-        //                                     process_flow = ProcessFlow::Updating;
-        //                                 } else if start_time.elapsed() > Duration::from_secs(3){
-        //                                     //2 second timeout if no new line comes in then patch (assume that no update was needed.)
-        //                                     println!("No update detected, patching...");
-        //                                     if !Self::is_patched(){          
-        //                                         if let Some(device) = create_device(){
-        //                                             match client.patch(device.get_patches()) {
-        //                                                 Ok(_) => {
-        //                                                     println!("Steam patched");
-        //                                                     let _ = Self::create_patched_file();
-        //                                                 },
-        //                                                 Err(_) => eprintln!("Couldn't patch Steam"),
-        //                                             }          
-        //                                         }       
-        //                                     }
-        //                                     process_flow = ProcessFlow::Updated;
-        //                                 }
-                                        
-        //                             }
-        //                             ProcessFlow::Updated => {
-        //                                 if line.contains("Update complete") {
-        //                                     println!("Update complete - Ready for next steps");
-        //                                     // Any logic that needs to happen after update
-        //                                     process_flow = ProcessFlow::None;
-        //                                 }
-        //                             },
-        //                             ProcessFlow::ShuttingDown => {
-        //                                 // Handle shutting down logic
-        //                                 process_flow = ProcessFlow::None;
-        //                             },
-        //                         }
-                               
-        //                         if line.contains("Shutdown") {
-        //                             println!("Shutdown detected - Unpatching if necessary");
-        //                             // Unpatching logic here
-        //                             if Self::is_patched(){
-        //                                 if let Some(device) = create_device() {
-        //                                     match client.unpatch(device.get_patches()) {
-        //                                         Ok(_) => {
-        //                                             println!("Steam unpatched");
-        //                                             let _ = Self::remove_patched_file();
-        //                                         },
-        //                                         Err(_) => eprintln!("Couldn't patch Steam"),
-        //                                     }          
-        //                                 }  
-        //                             }
-        //                             process_flow = ProcessFlow::ShuttingDown;
-        //                         }
-        //                     }
-        //                     Some(Err(err)) => println!("Error reading line: {}", err),
-        //                     None => println!("The file is empty"),
-        //                 }
-        //             }
-        //         }
-        //     }
-        // });
         let task = tokio::task::spawn_blocking(move || {
-            let mut buffer = [0u8; 4096];
-            enum ProcessFlow {
-                None,
-                UpdatePending(Instant),
-                Updating,
-                Updated,
-                ShuttingDown,
-            }
+            
+            let python_script_path = "/home/aly/github/steam-patch/patcher.py";
+            thread::spawn(move || {
+                //Spawn python subp
+                let mut child = Command::new("python3")
+                    .arg(python_script_path)
+                    .stdout(Stdio::piped())
+                    .spawn()
+                    .expect("Failed to spawn Python process");
+                let stdout = BufReader::new(child.stdout.take().expect("Failed to open stdout"));
+
             let mut process_flow = ProcessFlow::None;
-            let mut last_check_time = Instant::now();
-        
-            loop {
-                if last_check_time.elapsed() > Duration::from_micros(100) {
-                    // Read the file every second regardless of inotify events
-                    last_check_time = Instant::now();
-        
-                    let log_path = match Self::get_log_path() {
-                        Some(path) => path,
-                        None => {
-                            println!("Log path not found.");
-                            continue;
-                        }
-                    };
-        
-                    let file = match File::open(&log_path) {
-                        Ok(file) => file,
-                        Err(e) => {
-                            println!("Error opening file '{}': {}", log_path.display(), e);
-                            continue;
-                        }
-                    };
-                    let reader = BufReader::new(file);
-        
-                    if let Some(Ok(line)) = reader.lines().last() {
-                        // Process the last line of the log file
-                        // ... existing logic for handling different process flows ...
-                        match &mut process_flow {
+            enum ProcessFlow {
+                        None,
+                        UpdatePending(Instant),
+                        Updating,
+                        Updated,
+                        ShuttingDown,
+                    }
+            let mut start_time = Instant::now();
+            let client = Self::new(); // Create an instance of SteamClient
 
-                            ProcessFlow::None => {
-                                // if line.contains("Verifying installation...") {
-                                //     println!("Verifying installation...");
-                                //     process_flow = ProcessFlow::Updating;
-                                // }
-                                if line.contains("Verification complete") {
-                                    println!("Verification complete - Checking for update");
-
-                                    println!("transistioning to update pending");
-                                    process_flow = ProcessFlow::UpdatePending(Instant::now());
-                                }
-                                if line.contains("Download Complete") {
-                                    println!("Download complete");
-                                    process_flow = ProcessFlow::UpdatePending(Instant::now());
-                                }
-                                if line.contains("Saving metrics to disk") {
-                                    println!("Saving metrics to disk");
-                                    process_flow = ProcessFlow::UpdatePending(Instant::now());
-                                }
-                            },
-                            ProcessFlow::Updating => {
-                                // if line.contains("Verification complete") {
-                                //     println!("Verification complete - Checking for update");
-
-                                //     println!("transistioning to update pending");
-                                //     process_flow = ProcessFlow::UpdatePending(Instant::now());
-                                // }
-                                // if line.contains("Download Complete") {
-                                //     println!("Download complete");
-                                //     process_flow = ProcessFlow::UpdatePending(Instant::now());
-                                // }
-                                if line.contains("Verifying installation...") {
-                                    println!("Verifying installation...");
-                                    process_flow = ProcessFlow::Updating;
-                                }
-                            },
-                            ProcessFlow::UpdatePending(start_time) => {
-                                if line.contains("Downloading update") {
-                                    println!("Update is being downloaded");
-                                    process_flow = ProcessFlow::Updating;
-                                } else if start_time.elapsed() > Duration::from_secs(5) {
-                                    println!("No update detected, patching...");
-                                    println!("No update detected, patching...");
-                                    if !Self::is_patched(){          
-                                        if let Some(device) = create_device(){
-                                            match client.patch(device.get_patches()) {
-                                                Ok(_) => {
-                                                    println!("Steam patched");
-                                                    let _ = Self::create_patched_file();
-                                                },
-                                                Err(_) => eprintln!("Couldn't patch Steam"),
-                                            }          
-                                        }       
+            for line in stdout.lines() {
+                match line {
+                    Ok(line) => {
+                        // Process the output from the Python script
+                        if line == "Tabs found, Patching!!!!" {
+                            // Perform patching if not already patched
+                            if !Self::is_patched() {
+                                if let Some(device) = create_device() {
+                                    match client.patch(device.get_patches()) {
+                                        Ok(_) => {
+                                            println!("Steam patched");
+                                            let _ = Self::create_patched_file();
+                                        },
+                                        Err(_) => eprintln!("Couldn't patch Steam"),
                                     }
-                                    process_flow = ProcessFlow::Updated;
                                 }
-        
                             }
-                            ProcessFlow::Updated => {
-                                if line.contains("Update complete") {
-                                    println!("Update complete - Ready for next steps");
-                                    // Any logic that needs to happen after update
-                                    process_flow = ProcessFlow::None;
-                                }
-                            },
-                            ProcessFlow::ShuttingDown => {
-                                // Handle shutting down logic
-                                process_flow = ProcessFlow::None;
-                            },
-                        }
-                   
-                        if line.contains("Shutdown") {
-                            println!("Shutdown detected - Unpatching if necessary");
-                            // Unpatching logic here
-                            if Self::is_patched(){
+                        } else if line == "Tabs not found, Unpatching..." {
+                            // Perform unpatching if necessary
+                            if Self::is_patched() {
                                 if let Some(device) = create_device() {
                                     match client.unpatch(device.get_patches()) {
                                         Ok(_) => {
                                             println!("Steam unpatched");
                                             let _ = Self::remove_patched_file();
                                         },
-                                        Err(_) => eprintln!("Couldn't patch Steam"),
-                                    }          
-                                }  
+                                        Err(_) => eprintln!("Couldn't unpatch Steam"),
+                                    }
+                                }
                             }
-                            process_flow = ProcessFlow::ShuttingDown;
                         }
+                    },
+                    Err(e) => {
+                        eprintln!("Error reading line: {}", e);
+                        break;
                     }
                 }
-                
-                // Handle timeout for UpdatePending state
-                
-                if let ProcessFlow::UpdatePending(start_time) = &process_flow {
-                    println!("Processflow that patches after we have finished updating");
-                    println!("Starttime: {:?}", start_time);
-                    println!("StarttimeE: {:?}", start_time.elapsed());
-                    // if start_time.elapsed() > Duration::from_secs(1) {
-                        println!("No update detected, patching...");
-                        if !Self::is_patched(){          
-                            if let Some(device) = create_device(){
-                                match client.patch(device.get_patches()) {
-                                    Ok(_) => {
-                                        println!("Steam patched");
-                                        let _ = Self::create_patched_file();
-                                    },
-                                    Err(_) => eprintln!("Couldn't patch Steam"),
-                                }          
-                            }       
-                            // Self::reboot(&mut Self);
-                        }                        
-                        process_flow = ProcessFlow::Updated;
-                    // }
-                }
-                // print!("Outside of loop");
-                // Handle inotify events (if any)
-                // if let Ok(events) = inotify.read_events_blocking(&mut buffer) {
-                //     for _ in events {
-                //         // This block can remain empty or can be used for additional event handling
-                //     }
-                // }
-        
-                std::thread::sleep(Duration::from_millis(500)); // Short sleep to prevent tight looping
+
+                // Sleep for a short duration to prevent tight looping
+                std::thread::sleep(Duration::from_millis(500));
             }
-        });        
-        Some(task)
+
+            // Optionally, wait for the child process to finish
+            let result = child.wait().expect("Failed to wait on child");
+            println!("Python script exited with: {}", result);
+                
+
+            })
+        });  
+        Some(task)   
     }
 
     

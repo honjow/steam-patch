@@ -83,11 +83,6 @@ impl Device for DeviceGeneric {
                 replacement_text: "const t=c.Hm.deserializeBinary(e).toObject(); console.log(t); fetch(`http://localhost:1338/update_settings`, { method: 'POST',  headers: {'Content-Type': 'application/json'}, body: JSON.stringify(t.settings)}); Object.keys(t)".to_string(),
                 destination: PatchFile::Chunk,
             }, 
-            // Patch {
-            //     text_to_find: "l.k_EControllerTypeFlags_XBox360".to_string(),
-            //     replacement_text: "l.k_EControllerTypeFlags_SteamControllerNeptune".to_string(),
-            //     destination: PatchFile::Chunk,
-            // }, 
             //Overrides resolution for installed games so they are native resolution, must be installed with steam-patch patched in order for this change to go into effect.s
             Patch { //Nov 16
                 text_to_find: "DownloadComplete_Title\"),r=Ue(n,t.data.appid());const s=(0,x.Q2)();".to_string(),

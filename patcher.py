@@ -24,22 +24,39 @@ def find_tabs():
             for tab in tabs:
                 if tab.get('title') in TABS_TO_FIND:
                     return True
+    except ConnectionError as e:
+        print("Error: Could not connect to the server. Is the server running?")
+        return False
     except requests.exceptions.RequestException as e:
-        print(f"Error checking tabs: {e}")
+        # print(f"Error checking tabs: {e}")
+        print(f"Error checking tabs")
+        # return None
+
     return False
 
 def main():
-    print("Waiting for CEF tabs to become available...")
+    patched = False
+    print("Monitoring CEF tabs...")
     while True:
-        if find_tabs():
-            print("Required tabs found, Patching!!!!")
-            # Insert your code to perform actions when tabs are found
-            # break
-            time.sleep(0.1)
-    
-        else:
-            print("Tabs not found, Unpatching...")
-            time.sleep(0.1)
+        tabs_found = find_tabs()
+        if tabs_found is None:
+            print("Server not available, rechecking in 3 seconds...")
+            time.sleep(3)
+            continue
+        if tabs_found and not patched:
+            print("Required tabs found, patching...")
+            patched = True
+            # Perform patching action here
+            data = {"status": "patched"}
+            print(json.dumps(data))
+        elif not tabs_found and patched:
+            print("Tabs not found, unpatching...")
+            patched = False
+            # Perform unpatching action here
+            data = {"status": "unpatched"}
+            print(json.dumps(data))
+
+        time.sleep(0.1)  # Delay before rechecking
 
 if __name__ == '__main__':
     main()
