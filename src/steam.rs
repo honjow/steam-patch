@@ -258,17 +258,6 @@ impl SteamClient {
             };
         }
     }
-
-    pub fn get_log_path() -> Option<PathBuf> {
-        let username = get_username();
-        dirs::home_dir().map(|home| {
-            home.join(format!(
-                "/home/{}/.local/share/Steam/logs/bootstrap_log.txt",
-                username
-            ))
-        })
-    }
-
     fn is_patched() -> bool {
         let username = get_username(); // Assuming get_username() correctly returns a String
     
@@ -278,12 +267,7 @@ impl SteamClient {
         } else {
             return false;
         };
-    
-        // Append the remaining path components
         path.push(format!("/home/{}/steam-patch/patched", username));
-        
-        // Check if the 'patched' file exists
-        println!("Checking for {:?}",path);
         path.exists()
     }
     fn create_patched_file() -> Result<(), Error> {
@@ -379,50 +363,57 @@ impl SteamClient {
         println!("Watching Steam cef status...");
         let task = tokio::spawn(async move {
             let mut patched = false;
+            let mut server_was_down = false;
+
 
             loop {
                 match SteamClient::find_tabs().await {
                     Ok(tabs_found) => {
-                        if tabs_found && !patched {
-                            println!("Required tabs found, patching...");
-                            if let Some(device) = create_device() {
-                                match client.patch(device.get_patches()) {
-                                    Ok(_) => {
-                                        println!("Steam patched");
-                                        let _ = Self::create_patched_file();
-                                    },
-                                    Err(_) => eprintln!("Couldn't patch Steam"),
+                        server_was_down = false;
+                        if tabs_found {
+                            if !SteamClient::is_patched() {
+                                if let Some(device) = create_device() {
+                                    match client.patch(device.get_patches()) {
+                                        Ok(_) => {
+                                            println!("Steam patched");
+                                            let _ = Self::create_patched_file();
+                                        },
+                                        Err(_) => eprintln!("Couldn't patch Steam"),
+                                    }
+                                    
                                 }
-                                
+                                println!("Rebooting client");
+                                client.reboot().await;
+                                patched = true;
+                                println!(r#"{{"status": "patched"}}"#);
                             }
-                            println!("Rebooting client");
-                            client.reboot().await;
-                            patched = true;
-                            println!(r#"{{"status": "patched"}}"#);
-                        } else if !tabs_found && patched {
-                            println!("Tabs not found, unpatching...");
-                            if let Some(device) = create_device() {
-                                match client.unpatch(device.get_patches()) {
-                                    Ok(_) => {
-                                        println!("Unpatching to remove previous patches and repatching.");
-                                        let _ = Self::remove_patched_file();
-                                    },
-                                    Err(_) => eprintln!("Couldn't unpatch Steam"),
-                                }
-                            }
-                            patched = false;
-                            println!(r#"{{"status": "unpatched"}}"#);
                         }
                     }
                     Err(_) => {
+                        if !server_was_down {
+                            server_was_down = true;
+                            if SteamClient::is_patched() {
+                                if let Some(device) = create_device() {
+                                    match client.unpatch(device.get_patches()) {
+                                        Ok(_) => {
+                                            println!("Unpatching to remove previous patches and repatching.");
+                                            let _ = Self::remove_patched_file();
+                                        },
+                                        Err(_) => eprintln!("Couldn't unpatch Steam"),
+                                    }
+                                }
+                            }
+                        }
                         println!("Server not available, rechecking in 1 seconds...");
                         tokio::time::sleep(Duration::from_millis(100)).await;
                         continue;
                     }
                 }
+                // Notes for later: Maybe check for all tabs that would be in a normal session rather than one.
+
                 // Trial and sucess back to back runs
                 // 300 worked 1x
-                // 500 worked 2x
+                // 500 worked 2x bad 2x bad |NEW METHOD| 4x bad 1x
                 tokio::time::sleep(Duration::from_millis(500)).await;
             }
         });  
