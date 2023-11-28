@@ -371,8 +371,8 @@ impl SteamClient {
                     Err(_) => eprintln!("Couldn't patch Steam"),
                 }
             }
-            println!("Rebooting client");
-            client.reboot().await;
+            // println!("Rebooting client");
+            // client.reboot().await;
         }
 
 
@@ -388,12 +388,15 @@ impl SteamClient {
                             if let Some(device) = create_device() {
                                 match client.patch(device.get_patches()) {
                                     Ok(_) => {
-                                        println!("Steam was running and patched");
+                                        println!("Steam patched");
                                         let _ = Self::create_patched_file();
                                     },
                                     Err(_) => eprintln!("Couldn't patch Steam"),
                                 }
+                                
                             }
+                            println!("Rebooting client");
+                            client.reboot().await;
                             patched = true;
                             println!(r#"{{"status": "patched"}}"#);
                         } else if !tabs_found && patched {
@@ -413,12 +416,14 @@ impl SteamClient {
                     }
                     Err(_) => {
                         println!("Server not available, rechecking in 1 seconds...");
-                        tokio::time::sleep(Duration::from_millis(300)).await;
+                        tokio::time::sleep(Duration::from_millis(100)).await;
                         continue;
                     }
                 }
-        
-                tokio::time::sleep(Duration::from_millis(200)).await;
+                // Trial and sucess back to back runs
+                // 300 worked 1x
+                // 500 worked 2x
+                tokio::time::sleep(Duration::from_millis(500)).await;
             }
         });  
         Some(task)   
