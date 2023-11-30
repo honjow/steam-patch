@@ -148,23 +148,21 @@ pub fn pick_device() -> Option<evdev::Device> {
     None
 }
 
-pub fn recover_nkey() -> io::Result<()> {
-    // Check for "ROG Ally" in "/sys/devices/virtual/dmi/id/product_family"
-    
+pub fn recover_nkey() -> io::Result<()> {    
     // Check if a specific USB device is not present
-    println!("ROG Ally detected and USB device 0b05:1abe not present, proceeding with pm_test");
-
-    // Write to "/sys/power/pm_test"
-    writeln!(File::create("/sys/power/pm_test")?, "platform")?;
-    println!("Set power management test mode to platform");
-
-    // Write "freeze" to "/sys/power/state"
-    writeln!(File::create("/sys/power/state")?, "freeze")?;
-    println!("Requested system to enter freeze state");
-
-    // Write "none" to "/sys/power/pm_test"
-    writeln!(File::create("/sys/power/pm_test")?, "none")?;
-    println!("Disabled power management test mode");
+    println!("ROG Ally detected and USB device 0b05:1abe not present");
+    
+    let command1 = format!("echo '\\_SB.PCI0.SBRG.EC0.CSEE' \"0xB7\" > /proc/acpi/call");
+    let command2 = format!("echo '\\_SB.PCI0.SBRG.EC0.CSEE' \"0xB8\" > /proc/acpi/call");
+    match utils::run_command(&[&command1]) {
+        Ok(_) => println!("Set 0xB7"),
+        Err(e) => println!("Couldn't set 0xB7 {}", e),
+    }
+    thread::sleep(Duration::from_secs(1));
+    match utils::run_command(&[&command2]) {
+        Ok(_) => println!("Set 0xB8"),
+        Err(e) => println!("Couldn't set 0xB8 {}", e),
+    }
     Ok(())
 }
 

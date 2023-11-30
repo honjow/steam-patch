@@ -3,14 +3,17 @@
 use crate::devices::create_device;
 use crate::patch::Patch;
 use crate::utils::get_username;
+use dirs::home_dir;
 use hyper::{Client, Uri, body};
 use inotify::{Inotify, WatchMask};
 use serde::{Deserialize};
+use tungstenite::http::response;
 use std::collections::HashMap;
 use std::env;
 use std::f32::consts::E;
 use std::fs::{self, File};
 use std::io::{BufRead, BufReader, Error};
+use std::os::unix::process;
 use std::path::PathBuf;
 use sysinfo::{ProcessExt, SystemExt};
 use tokio::time::{sleep, Duration, Instant};
@@ -19,6 +22,11 @@ use tungstenite::connect;
 use tungstenite::stream::MaybeTlsStream;
 use tungstenite::{Message, WebSocket};
 use std::option::Option;
+use std::process::{Command, Stdio};
+use std::thread;
+use reqwest;
+use serde_json::Value;
+
 
 #[derive(Deserialize)]
 struct Tab {
@@ -36,12 +44,11 @@ impl SteamClient {
 
         for patch in &patches {
             // Use `match` or `if let` to handle the Option returned by `get_file()`
-            println!("Applying patch: {:?}", patch);
+            // println!("Applying patch: Curr->{:?}", patch.text_to_find);
             if let Ok(Some(path_file)) = patch.destination.get_file() {
                 // Convert the `Path` to a string and handle the potential `None` case
                 if let Some(path_str) = path_file.to_str() {
                     let path_string = path_str.to_string();
-                    // println!("Processing file: {}", path_string);
                     // Handle the Result of `read_to_string` with `unwrap_or_else`
                     let content = opened_files
                         .entry(path_string.clone())
@@ -61,10 +68,10 @@ impl SteamClient {
                     let text_to_find = &patch.text_to_find;
                     let replacement_text = &patch.replacement_text;
                     if content.contains(text_to_find) {
-                        // println!("Found text to replace in {}: '{}'", path_string, text_to_find);
+                        // println!("Success: New->{}", replacement_text);
                         *content = content.replace(text_to_find, replacement_text);
                     } else {
-                        println!("Text not found in {}: '{}'", path_string, text_to_find);
+                        println!("Failed to patch: '{}'", replacement_text);
                     }
                 } else {
                     // Handle the error if path_str is None
@@ -85,28 +92,26 @@ impl SteamClient {
         }
         println!("Patching complete.");
 
+
+
         Ok(())
     }
 
     pub fn unpatch(&mut self, patches: Vec<Patch>) -> Result<(), Error> {
         let mut opened_files: HashMap<String, String> = HashMap::new();
 
-       
+
         for patch in &patches {
-            // Use `match` or `if let` to handle the Option returned by `get_file()`
-            println!("Removing patch: {:?}", patch);
             if let Ok(Some(path_file)) = patch.destination.get_file() {
                 // Convert the `Path` to a string and handle the potential `None` case
                 if let Some(path_str) = path_file.to_str() {
                     let path_string = path_str.to_string();
-                    // println!("Processing file: {}", path_string);
                     // Handle the Result of `read_to_string` with `unwrap_or_else`
                     let content = opened_files
                         .entry(path_string.clone())
                         .or_insert_with(|| {
                             match fs::read_to_string(&path_file) {
                                 Ok(content) => {
-                                    // println!("File read successfully: {}", path_string);
                                     content
                                 }
                                 Err(e) => {
@@ -119,10 +124,10 @@ impl SteamClient {
                     let text_to_find = &patch.text_to_find;
                     let replacement_text = &patch.replacement_text;
                     if content.contains(replacement_text) {
-                        // println!("Found text to replace in {}: '{}'", path_string, text_to_find);
+                        // println!("Success: New->{}", text_to_find);
                         *content = content.replace(replacement_text, text_to_find);
                     } else {
-                        // println!("Text not found in {}: '{}'", path_string, text_to_find);
+                        println!("Failed to unpatch: '{}'", replacement_text);
                     }
                 } else {
                     // Handle the error if path_str is None
@@ -134,11 +139,11 @@ impl SteamClient {
             }
         }
 
-        println!("Writing changes to disk...");
+        println!("Reverting changes to disk...");
         for (path, content) in &opened_files {
             match fs::write(path, content) {
-                Ok(_) => println!("File written successfully: {}", path),
-                Err(e) => eprintln!("Failed to write to file '{}': {}", path, e),
+                Ok(_) => println!("File reverted successfully: {}", path),
+                Err(e) => eprintln!("Failed to revert file '{}': {}", path, e),
             };
         }
         println!("Unpatching complete.");
@@ -253,143 +258,169 @@ impl SteamClient {
             };
         }
     }
-
-    pub fn get_log_path() -> Option<PathBuf> {
-        let username = get_username();
-        dirs::home_dir().map(|home| {
-            home.join(format!(
-                "/home/{}/.local/share/Steam/logs/bootstrap_log.txt",
-                username
-            ))
-        })
+    fn is_patched() -> bool {
+        let username = get_username(); // Assuming get_username() correctly returns a String
+    
+        // Use PathBuf for building the file path
+        let mut path = if let Some(home_dir) = dirs::home_dir() {
+            home_dir
+        } else {
+            return false;
+        };
+        path.push(format!("/home/{}/steam-patch/patched", username));
+        path.exists()
     }
-    fn get_patch_file_path() -> Result<PathBuf, Error> {
-        let mut binary_path = env::current_exe()?;
-        binary_path.set_extension("patched");
-        Ok(binary_path)
+    fn create_patched_file() -> Result<(), Error> {
+        let username = get_username(); 
+    
+        // Use PathBuf for building the file path
+        let mut path = if let Some(home_dir) = dirs::home_dir() {
+            home_dir
+        } else {
+            // Return an error if home directory cannot be determined
+            return Err(Error::new(std::io::ErrorKind::NotFound, "Home directory not found"));
+        };
+    
+        // Append the remaining path components
+        path.push(format!("/home/{}/steam-patch/patched", username));
+    
+        // Create the file
+        println!("Creating file at {:?}", path);
+        File::create(path)?;
+    
+        Ok(())
+    }
+    fn remove_patched_file() -> Result<(), Error> {
+        let username = get_username();
+    
+        // Use PathBuf for building the file path
+        let mut path = if let Some(home_dir) = dirs::home_dir() {
+            home_dir
+        } else {
+            // Return an error if home directory cannot be determined
+            return Err(Error::new(std::io::ErrorKind::NotFound, "Home directory not found"));
+        };
+    
+        // Append the remaining path components
+        path.push(format!("/home/{}/steam-patch/patched", username));
+    
+        // Remove the file
+        println!("Removing file at {:?}", path);
+        fs::remove_file(path)?;
+    
+        Ok(())
+    }
+    
+    const DEBUG_URL: &str = "http://localhost:8080/json";
+    const TABS_TO_FIND: &'static[&'static str] = &["SharedJSContext"];
+
+    async fn find_tabs() -> Result<bool, reqwest::Error> {
+        let response = reqwest::get(Self::DEBUG_URL).await?;
+
+        if response.status().is_success() {
+            let tabs: Vec<Value> = response.json().await?;
+            for tab in tabs {
+                if let Some(title) = tab["title"].as_str() {
+                    if Self::TABS_TO_FIND.contains(&title) {
+                        return Ok(true);
+                    }
+                }
+            }
+        }
+        Ok(false)
     }
 
     pub async fn watch() -> Option<tokio::task::JoinHandle<()>> {
         // If Steam client is already running, patch it and restart
         let mut client = Self::new();
-        if Self::is_running() {
+        if Self::is_running()  {
             client.connect().await;
             if let Some(device) = create_device() {
                 //Attempt to unpatch previous changes
-                match client.unpatch(device.get_patches()) {
-                    Ok(_) => println!("Unpatching to remove previous patches and repatching."),
-                    Err(_) => eprintln!("Couldn't unpatch Steam"),
+                if Self::is_patched(){
+                    match client.unpatch(device.get_patches()) {
+                        Ok(_) => {
+                            println!("Unpatching to remove previous patches and repatching.");
+                            let _ = Self::remove_patched_file();
+                        },
+                        Err(_) => eprintln!("Couldn't unpatch Steam"),
+                    }
                 }
                 //Then repatches new changes
                 match client.patch(device.get_patches()) {
-                    Ok(_) => println!("Steam was running and patched"),
+                    Ok(_) => {
+                        println!("Steam was running and patched");
+                        let _ = Self::create_patched_file();
+                    },
                     Err(_) => eprintln!("Couldn't patch Steam"),
                 }
             }
-            println!("Rebooting client");
-            client.reboot().await;
+            // println!("Rebooting client");
+            // client.reboot().await;
         }
 
-        // Watch for changes in log
-        // let mut inotify = Inotify::init().expect("Failed to initialize inotify");
-        // Initialize inotify outside of the if-let to ensure it exists for the lifetime of the function
-        let mut inotify = match Inotify::init() {
-            Ok(inotify) => inotify,
-            Err(e) => {
-                eprintln!("Failed to initialize inotify: {:?}", e);
-                return None;
-            }
-        };
 
-        // Get the log path using the existing function
-        let log_path = match Self::get_log_path() {
-            Some(path) => path,
-            None => {
-                eprintln!("Log path could not be determined.");
-                return None;
-            }
-        };
-        // Add a watch to the log path
-        match inotify.watches().add(&log_path, WatchMask::MODIFY) {
-            Ok(_) => println!("Watching log path: {:?}", log_path),
-            Err(e) => {
-                eprintln!("Failed to add a watch to the log path: {:?}", e);
-                return None;
-            }
-        };
+        println!("Watching Steam cef status...");
+        let task = tokio::spawn(async move {
+            let mut patched = false;
+            let mut server_was_down = false;
 
-        println!("Watching Steam log...");
-        let task = tokio::task::spawn_blocking(move || {
-            let mut buffer = [0u8; 4096];
-            let mut process_flow = 0;
+
             loop {
-                if let Ok(events) = inotify.read_events_blocking(&mut buffer) {
-                    for _ in events {
-                        //Remove unwrap
-                        let log_path = match Self::get_log_path() {
-                            Some(path) => path,
-                            None => {
-                                println!("Log path not found.");
-                                continue;
-                            }
-                        };
-                        
-                        // let file = File::open(Self::get_log_path().unwrap()).unwrap();
-                        let file = match File::open(&log_path) {
-                            Ok(file) => file,
-                            Err(e) => {
-                                println!("Error opening file '{}': {}", log_path.display(), e);
-                                continue;
-                            }
-                        };
-                        let reader = BufReader::new(file);
-
-                        match reader.lines().last() {
-                            Some(Ok(line)) => {
-                                if line.contains("BVerifyInstalledFiles") {
-                                    println!("BVerifyInstalledFiles - {}", process_flow);
-                                    process_flow = 1;
-                                }
-                                if process_flow == 2 {
-                                    if line.contains("Verification complete") {
-                                        println!("Verification comeplete - {}", process_flow);
-
-                                        if let Some(device) = create_device() {
-                                            match client.patch(device.get_patches()) {
-                                                Ok(_) => println!("Steam patched"),
-                                                Err(_) => eprintln!("Couldn't patch Steam"),
-                                            }          
-                                        }
-                                        process_flow = 0
+                match SteamClient::find_tabs().await {
+                    Ok(tabs_found) => {
+                        server_was_down = false;
+                        if tabs_found {
+                            if !SteamClient::is_patched() {
+                                if let Some(device) = create_device() {
+                                    match client.patch(device.get_patches()) {
+                                        Ok(_) => {
+                                            println!("Steam patched");
+                                            let _ = Self::create_patched_file();
+                                        },
+                                        Err(_) => eprintln!("Couldn't patch Steam"),
                                     }
+                                    
                                 }
-                                if process_flow == 1 {
-                                    if line.contains("Update complete") {
-                                        println!("Update complete - {}", process_flow);
-                                        process_flow = 2;
-                                    }
-                                }
-                                if process_flow == 0 {
-                                    if line.contains("Shutdown") {
-                                        println!("Shutdown - {}", process_flow);
-                                        if let Some(device) = create_device() {
-                                            match client.unpatch(device.get_patches()) {
-                                                Ok(_) => println!("Steam unpatched"),
-                                                Err(_) => eprintln!("Couldn't unpatch Steam"),
-                                            }
-                                        }
-                                    }
-                                }
+                                println!("Rebooting client");
+                                client.reboot().await;
+                                patched = true;
+                                println!(r#"{{"status": "patched"}}"#);
                             }
-                            Some(Err(err)) => println!("Error reading line: {}", err),
-                            None => println!("The file is empty"),
                         }
                     }
+                    Err(_) => {
+                        if !server_was_down {
+                            server_was_down = true;
+                            if SteamClient::is_patched() {
+                                if let Some(device) = create_device() {
+                                    match client.unpatch(device.get_patches()) {
+                                        Ok(_) => {
+                                            println!("Unpatching to remove previous patches and repatching.");
+                                            let _ = Self::remove_patched_file();
+                                        },
+                                        Err(_) => eprintln!("Couldn't unpatch Steam"),
+                                    }
+                                }
+                            }
+                        }
+                        println!("Server not available, rechecking in 1 seconds...");
+                        tokio::time::sleep(Duration::from_millis(100)).await;
+                        continue;
+                    }
                 }
+                // Notes for later: Maybe check for all tabs that would be in a normal session rather than one.
+
+                // Trial and sucess back to back runs
+                // 300 worked 1x
+                // 500 worked 2x bad 2x bad |NEW METHOD| 4x bad 1x
+                tokio::time::sleep(Duration::from_millis(500)).await;
             }
-        });
-        Some(task)
+        });  
+        Some(task)   
     }
+
+    
 
     fn is_running() -> bool {
         let mut sys = sysinfo::System::new_all();

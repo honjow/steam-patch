@@ -15,7 +15,7 @@ use std::time::Duration as DDuration;
 use std::io::{self, Write, Read};
 use std::io::BufRead;
 use std::collections::HashMap;
-use tokio::fs::File;
+use tokio::fs::{File, read_dir};
 use tokio::io::AsyncReadExt;
 use tokio::time::{timeout, Duration};
 
@@ -91,24 +91,63 @@ fn read_from_hidraw(device_path: &str, buffer_size: usize) -> io::Result<Vec<u8>
     Ok(buffer)
 }
 
-pub async fn find_active_hidraw_device(device1: &str, device2: &str, device3: &str) -> io::Result<Option<String>> {
-    let mut buffer = vec![0; 1024]; // Buffer to read data into
+pub async fn find_active_hidraw_device() -> io::Result<Option<String>> {
+    let hidraw_base_path = "/sys/class/hidraw";
+    let mut matching_devices = Vec::new();
 
-    for device_path in [device1, device2, device3].iter() {
+    // Read the directory asynchronously
+    let mut dir = read_dir(hidraw_base_path).await?;
+    println!("Reading directory: {}", hidraw_base_path);
+
+    // Iterate over the entries in the directory
+    while let Some(entry) = dir.next_entry().await? {
+        let path = entry.path();
+        let uevent_path = path.join("device/uevent");
+        // println!("Checking path: {:?}", uevent_path);
+
+        if let Ok(mut uevent_file) = File::open(&uevent_path).await {
+            let mut buffer = Vec::new();
+            uevent_file.read_to_end(&mut buffer).await?;
+            let contents = String::from_utf8_lossy(&buffer);
+            // println!("Contents of file {}: {}", uevent_path.display(), contents);
+
+            // Check if contents match your criteria 
+
+            // Found X-input
+            if contents.contains("Legion Controller for Windows") {
+                if let Some(device_path) = path.file_name().map(|name| Path::new("/dev").join(name).to_string_lossy().into_owned()) {                
+                    // println!("Matching device found: {:?}", device_path);
+                    matching_devices.push(device_path);
+                }
+            }
+            // Found D-input
+            if contents.contains("Legion-Controller 1-A7") {
+                if let Some(device_path) = path.file_name().map(|name| Path::new("/dev").join(name).to_string_lossy().into_owned()) {                
+                    // println!("Matching device found: {:?}", device_path);
+                    matching_devices.push(device_path);
+                }
+            }
+        } else {
+            println!("Could not open file: {:?}", uevent_path);
+        }
+    }
+    println!("Trying the following devices: {:?}", matching_devices);
+    let mut buffer = vec![0; 1024];
+    
+    for device_path in matching_devices.iter() {
         if let Ok(mut file) = File::open(device_path).await {
             // Set a timeout for the file.read operation
             let timeout_duration = Duration::from_secs(1); 
             let read_result = timeout(timeout_duration, file.read(&mut buffer)).await;
             println!("Now looking at device {:?}", device_path);
+            println!("Read result: {:?}", read_result);
+            
             match read_result {
-                Ok(Ok(size)) if size > 63 => {
+                Ok(Ok(size)) if size == 64 => {
                     println!("Success at using {:?}", device_path);
-                    return Ok(Some((*device_path).to_string()));
+                    return Ok(Some((device_path).to_string()));
                 },
-                Ok(Ok(_)) | Ok(Err(_)) | Err(_) => {
-                    // Handle the case where read operation is less than 64 bytes, errors, or timeout occurs
-                    println!("Skipping {:?}", device_path);
-                },
+                _ => continue,
             }
         }
     }
@@ -121,7 +160,7 @@ pub fn start_mapper(mut steam: SteamClient) -> Option<tokio::task::JoinHandle<()
 
     if conf.mapper {
         Some(tokio::spawn(async move {
-            let active_device = match find_active_hidraw_device("/dev/hidraw3", "/dev/hidraw2", "/dev/hidraw1").await {
+            let active_device = match find_active_hidraw_device().await {
                 Ok(Some(path)) => path,
                 _ => {
                     eprintln!("No active HIDRAW device found, retrying in 2 seconds");
@@ -147,14 +186,18 @@ pub fn start_mapper(mut steam: SteamClient) -> Option<tokio::task::JoinHandle<()
                                             .await;
                             }
                             if(data[18] == 128){
-                                println!("Show Menu");
-                                        steam
-                                            .execute("GamepadNavTree.m_Controller.OnButtonActionInternal(true, 27, 2); console.log(\"Show Menu\");")
-                                            .await;
+                                if data[19] == 32 {
+                                    println!("Show keyboard");
+                                    steam.execute("SteamClient.URL.ExecuteSteamURL('steam://open/keyboard')").await;
+                                } else {
+                                    println!("Show Menu");
+                                    steam.execute("GamepadNavTree.m_Controller.OnButtonActionInternal(true, 27, 2); console.log(\"Show Menu\");").await;
+                                }
                             }
-                            if(data[18] == 128 && data[19] == 32) {
-                                println!("Show keyboard")
-                            }
+                            // if(data[18] == 128 && data[19] == 32) {
+                            //     println!("Show keyboard");
+                            //     steam.execute("SteamClient.URL.ExecuteSteamURL('steam://open/keyboard')").await;
+                            // }
                         } else if data.len() < 64 {
                             println!("Device data length {:?}", data.len());
                             println!("Device path {:?}", &active_device);

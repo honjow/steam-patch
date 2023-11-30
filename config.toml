@@ -8,6 +8,9 @@ max_gpu = 2700
 #Feature toggles
 legacy_tdp = false         #true = ryzenadj, false = ACPI ROG ALLY METHOD
 mapper = true              #Enable disable the QAM and Steam button mapping
+spoof_glyphs = true        #Enable to change PS/Xbox buttons to match SD including Steam Menu and Option menu
+nintendo_glyphs = false     #Swaps A <-> B and X <-> Y
+
 
 #Experimental ROG ALLY ONLY
 auto_nkey_recovery = false #Attempts to suspend and resume the device if NKEY is lost
