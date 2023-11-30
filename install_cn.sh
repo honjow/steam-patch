@@ -21,9 +21,25 @@ TEMP_FOLDER=$(mktemp -d)
 touch "$HOME/.steam/steam/.cef-enable-remote-debugging"
 
 # Download latest release and install it
-RELEASE=$(curl -s "${github_prefix}https://api.github.com/repos/honjow/steam-patch/releases" | jq -r "first(.[] | select(.prerelease == "false"))")
+RELEASE=$(curl -s "${github_prefix}https://api.github.com/repos/honjow/steam-patch/releases" )
+
+MESSAGE=$(echo "$RELEASE" | jq -r '.message')
+
+# if MESSAGE not null, then there is an error
+if [[ "x$MESSAGE" != "xnull" ]]; then
+  echo -e "Failed to get latest release info:\n${MESSAGE}" >&2
+  exit 1
+fi
+
+RELEASE=$(echo "$RELEASE" | jq -r "first(.[] | select(.prerelease == "false"))")
+
 VERSION=$(jq -r '.tag_name' <<< ${RELEASE} )
 DOWNLOAD_URL=$(jq -r '.assets[].browser_download_url | select(endswith("steam-patch"))' <<< ${RELEASE})
+
+if [ -z "$VERSION" ] || [ -z "$DOWNLOAD_URL" ]; then
+  echo "Failed to get latest release info" >&2
+  exit 1
+fi
 
 SERVICES_URL=$(jq -r '.assets[].browser_download_url | select(endswith("steam-patch-pro.service"))' <<< ${RELEASE})
 SERVICES_BOOT_URL=$(jq -r '.assets[].browser_download_url | select(endswith("restart-steam-patch-on-boot.service"))' <<< ${RELEASE})
